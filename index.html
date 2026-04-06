@@ -107,7 +107,7 @@
             const res = await fetch('http://localhost:11434/api/chat', {
                 method: 'POST',
                 body: JSON.stringify({
-                    model: "deepseek-r1:1.5b",
+                    model: "tinyllama",
                     messages: [{role: "user", content: val}],
                     stream: false
                 })
