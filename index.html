@@ -346,6 +346,20 @@
         .tag.pro { background: rgba(192, 132, 252, 0.1); color: var(--status-pro); border: 1px solid var(--status-pro); }
         .tag.thinking { background: rgba(251, 191, 36, 0.1); color: var(--status-think); border: 1px solid var(--status-think); }
 
+        /* API KEY TUTORIAL SECTION */
+        .tutorial-box {
+            background: linear-gradient(to right, rgba(124, 106, 255, 0.05), transparent);
+            border-left: 3px solid var(--accent);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .tutorial-box h3 { font-size: 16px; color: var(--accent); margin-bottom: 15px; }
+        .tutorial-box ul { list-style: none; font-size: 13px; color: var(--text-dim); }
+        .tutorial-box li { margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .tutorial-box li span { color: var(--accent); font-weight: 800; }
+
         /* =========================================
            OMNI-CHAT UI
            =========================================
@@ -568,8 +582,18 @@
                 <div class="grid-header">
                     <div>
                         <h1 style="font-size: 36px; margin-bottom: 5px;">Model Registry</h1>
-                        <p style="color: var(--text-dim);">Select from 110+ high-fidelity AI engines.</p>
+                        <p style="color: var(--text-dim);">Configure 110+ high-fidelity AI engines.</p>
                     </div>
+                </div>
+
+                <div class="tutorial-box">
+                    <h3>HOW TO GET YOUR API KEYS</h3>
+                    <ul>
+                        <li><span>1. Google Gemini:</span> Visit <a href="https://aistudio.google.com/" target="_blank" style="color:var(--status-free);">Google AI Studio</a> and click "Get API Key".</li>
+                        <li><span>2. Zhipu GLM:</span> Register at BigModel.cn for GLM-4.5-Flash keys.</li>
+                        <li><span>3. DeepSeek:</span> Go to platform.deepseek.com to generate your V3/R1 tokens.</li>
+                        <li><span>4. Groq:</span> Visit console.groq.com for Llama 3.3 ultra-fast keys.</li>
+                    </ul>
                 </div>
 
                 <div class="glass-panel" style="padding: 30px; margin-bottom: 40px; border-radius: 25px; display: flex; align-items: center; justify-content: space-between;">
@@ -650,23 +674,23 @@
 
     <script>
         /* =========================================
-           110+ OMNI-MODEL DATABASE
+           110+ OMNI-MODEL DATABASE (CORRECTED NAMES)
            =========================================
         */
         const MODELS = [
             { id: "glm-4.5-flash", name: "GLM-4.5-Flash", provider: "ZhipuAI", type: "free", think: false, desc: "Nexus Default — Majestic performance." },
             { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "Google", type: "free", think: false, desc: "Ultra-low latency reasoning." },
-            { id: "gemini-2.0-pro-exp", name: "Gemini 2.0 Pro", provider: "Google", type: "pro", think: true, desc: "Architect-level coding logic." },
+            { id: "gemini-2.0-pro-exp", name: "Gemini 2.0 Pro (Experimental)", provider: "Google", type: "pro", think: true, desc: "Architect-level coding logic." },
             { id: "deepseek-v3", name: "DeepSeek V3", provider: "DeepSeek", type: "pro", think: false, desc: "Unfiltered technical specialist." },
-            { id: "deepseek-r1", name: "DeepSeek R1 (Reasoner)", provider: "DeepSeek", type: "pro", think: true, desc: "Infinite chain-of-thought logic." },
+            { id: "deepseek-r1", name: "DeepSeek R1", provider: "DeepSeek", type: "pro", think: true, desc: "Infinite chain-of-thought logic." },
             { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic", type: "pro", think: false, desc: "Human-centric creative engine." },
             { id: "llama-3.3-70b", name: "Llama 3.3 70B", provider: "Groq", type: "free", think: false, desc: "Raw open-source power." },
-            { id: "gpt-4o-latest", name: "GPT-4o (Omni)", provider: "OpenAI", type: "pro", think: false, desc: "The industry standard." },
+            { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", type: "pro", think: false, desc: "The industry standard." },
             ...Array.from({length: 104}, (_, i) => ({
                 id: `omni-ext-${i}`,
                 name: `Omni-Engine X-${i+10}`,
                 provider: i % 2 === 0 ? "Google" : "Groq",
-                type: i % 5 === 0 ? "pro" : "free",
+                type: "pro", // Most extensions are pro features
                 think: i % 8 === 0,
                 desc: "Distributed computational module."
             }))
@@ -814,7 +838,7 @@
                 const id = addThinking('player-chat-display');
                 setTimeout(() => {
                     removeThinking(id);
-                    appendMsg('player-chat-display', 'ai', `[REASONING COMPLETE]\n${msg} has been architected via Deep Reasoning.`);
+                    appendMsg('player-chat-display', 'ai', `[REASONING COMPLETE]\nModel: ${state.selectedModel.name}\n\n${msg} has been architected via Deep Reasoning.`);
                 }, 2500);
             } else {
                 setTimeout(() => appendMsg('player-chat-display', 'ai', `Engine: ${state.selectedModel.name}\n\nResponse: ${msg}`), 600);
