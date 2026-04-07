@@ -1,77 +1,114 @@
 <script>
+/* =========================================
+   MODEL DATABASE
+========================================= */
 const MODELS = [
     { id: "glm-4.5-flash", name: "GLM-4.5-Flash", provider: "ZhipuAI", type: "free", think: false, desc: "Nexus Default — Majestic performance." },
     { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "Google", type: "free", think: false, desc: "Ultra-low latency reasoning." },
+    { id: "gemini-2.0-pro-exp", name: "Gemini 2.0 Pro", provider: "Google", type: "pro", think: true, desc: "Advanced reasoning." },
     { id: "deepseek-r1", name: "DeepSeek R1", provider: "DeepSeek", type: "pro", think: true, desc: "Chain-of-thought logic." },
-    ...[...Array(20)].map((_, i) => ({
+    { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", type: "pro", think: false, desc: "Industry standard." },
+    ...Array.from({length: 30}, (_, i) => ({
         id: `omni-${i}`,
         name: `Omni Engine ${i}`,
-        provider: "Custom",
+        provider: i % 2 ? "Google" : "Groq",
         type: "pro",
-        think: i % 3 === 0,
+        think: i % 5 === 0,
         desc: "Extended module"
     }))
 ];
 
+/* =========================================
+   STATE
+========================================= */
 let state = {
     authMode: 'master',
     selectedModel: MODELS[0],
     tokens: JSON.parse(localStorage.getItem('nx_tokens') || '[]'),
     masterKey: localStorage.getItem('nx_master_key') || '',
     masterPass: 'admin123',
-    isThinkActive: false
+    isThinkActive: false,
+    directives: localStorage.getItem('nx_directives') || ""
 };
 
-/* ======================
-   SAFE TEXT RENDER
-====================== */
+/* =========================================
+   UTIL
+========================================= */
 function escapeHTML(str) {
-    return str.replace(/[&<>"']/g, tag => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;',
-        '"': '&quot;', "'": '&#39;'
-    }[tag]));
+    return str.replace(/[&<>"']/g, s => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",
+        '"':"&quot;","'":"&#39;"
+    }[s]));
 }
 
-/* ======================
+/* =========================================
    AUTH
-====================== */
+========================================= */
 function setAuthMode(m) {
     state.authMode = m;
-    tab-master.classList.toggle('active', m === 'master');
-    tab-player.classList.toggle('active', m === 'player');
-    auth-label.innerText = m === 'master' ? 'MASTER SECURITY KEY' : 'PLAYER TOKEN';
+    document.getElementById('tab-master').classList.toggle('active', m === 'master');
+    document.getElementById('tab-player').classList.toggle('active', m === 'player');
+    document.getElementById('auth-label').innerText =
+        m === 'master' ? 'MASTER SECURITY KEY' : 'PLAYER SESSION TOKEN';
 }
 
 function handleAuth() {
-    const val = auth-input.value;
+    const val = document.getElementById('auth-input').value;
 
-    if(state.authMode === 'master' && val === state.masterPass){
-        localStorage.setItem('nx_session','master');
-        showScreen('owner-screen');
-        showToast("MASTER ACCESS");
-    } 
-    else if(state.authMode === 'player' && state.tokens.includes(val)){
-        localStorage.setItem('nx_session','player');
-        showScreen('chat-screen');
-        syncModelUI();
-    } 
-    else showToast("ACCESS DENIED", true);
+    if(state.authMode === 'master') {
+        if(val === state.masterPass) {
+            localStorage.setItem('nx_session', 'master');
+            showScreen('owner-screen');
+            showToast("MASTER ACCESS GRANTED");
+        } else showToast("INVALID KEY", true);
+    } else {
+        if(state.tokens.includes(val)) {
+            localStorage.setItem('nx_session', 'player');
+            showScreen('chat-screen');
+            syncModelUI();
+            showToast("SESSION STARTED");
+        } else showToast("INVALID TOKEN", true);
+    }
 }
 
-/* ======================
+function logout() {
+    localStorage.removeItem('nx_session');
+    location.reload();
+}
+
+/* =========================================
    SCREEN
-====================== */
-function showScreen(id){
-    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+========================================= */
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
 }
 
-/* ======================
+/* =========================================
+   PANELS
+========================================= */
+function switchPanel(panelId, btn) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.workspace-panel').forEach(p => p.classList.remove('active'));
+
+    const target = document.getElementById('panel-' + panelId);
+    target.classList.add('active');
+
+    target.style.display = panelId === 'omnichat' ? 'flex' : 'block';
+
+    if(panelId === 'omnichat') syncModelUI();
+}
+
+/* =========================================
    MODELS
-====================== */
-function renderModels(){
-    model-container.innerHTML = MODELS.map(m => `
-        <div class="model-card ${state.selectedModel.id===m.id?'selected':''}" onclick="selectModel('${m.id}')">
+========================================= */
+function renderModels() {
+    const container = document.getElementById('model-container');
+    container.innerHTML = MODELS.map(m => `
+        <div class="model-card ${state.selectedModel.id === m.id ? 'selected' : ''}"
+             onclick="selectModel('${m.id}')">
             <p>${m.provider}</p>
             <h4>${m.name}</h4>
             <div style="font-size:10px;color:var(--text-dim)">${m.desc}</div>
@@ -79,107 +116,203 @@ function renderModels(){
     `).join('');
 }
 
-function selectModel(id){
-    state.selectedModel = MODELS.find(m=>m.id===id);
+function selectModel(id) {
+    state.selectedModel = MODELS.find(m => m.id === id);
     renderModels();
     syncModelUI();
+    showToast("MODEL: " + state.selectedModel.name);
 }
 
-/* ======================
+/* =========================================
    TOKENS
-====================== */
-function genToken(){
-    const t = "NX-" + Math.random().toString(36).slice(2,10).toUpperCase();
+========================================= */
+function genToken() {
+    const t = "NX-" + Math.random().toString(36).slice(2, 10).toUpperCase();
     state.tokens.push(t);
     localStorage.setItem('nx_tokens', JSON.stringify(state.tokens));
     renderTokens();
+    showToast("TOKEN CREATED");
 }
 
-function renderTokens(){
-    token-list.innerHTML = state.tokens.map(t => `
+function renderTokens() {
+    const list = document.getElementById('token-list');
+    list.innerHTML = state.tokens.map(t => `
         <div class="glass-panel" style="padding:10px;display:flex;justify-content:space-between;">
             <code>${t}</code>
-            <button onclick="copy('${t}')">COPY</button>
+            <button class="majestic-button" style="padding:5px 10px;font-size:10px"
+                onclick="copy('${t}')">COPY</button>
         </div>
     `).join('');
 }
 
-/* ======================
+function copy(t) {
+    navigator.clipboard.writeText(t);
+    showToast("COPIED");
+}
+
+/* =========================================
+   MODEL SYNC
+========================================= */
+function syncModelUI() {
+    const el = document.getElementById('active-model-name');
+    if(el) el.innerText = state.selectedModel.name;
+
+    document.querySelectorAll('.think-btn-global').forEach(btn => {
+        btn.style.display = state.selectedModel.think ? 'flex' : 'none';
+        btn.classList.toggle('active', state.isThinkActive);
+    });
+
+    if(!state.selectedModel.think) state.isThinkActive = false;
+}
+
+function toggleThink() {
+    if(!state.selectedModel.think) return;
+
+    state.isThinkActive = !state.isThinkActive;
+
+    document.querySelectorAll('.think-btn-global')
+        .forEach(btn => btn.classList.toggle('active', state.isThinkActive));
+
+    showToast(state.isThinkActive ? "THINK ON" : "THINK OFF");
+}
+
+/* =========================================
    CHAT
-====================== */
-function appendMsg(containerId, role, text){
+========================================= */
+function appendMsg(containerId, role, text) {
     const c = document.getElementById(containerId);
     const div = document.createElement('div');
     div.className = `msg-row ${role}`;
-    div.innerHTML = `<div class="bubble">${escapeHTML(text)}</div>`;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerText = text;
+
+    div.appendChild(bubble);
     c.appendChild(div);
     c.scrollTop = c.scrollHeight;
 }
 
-function fakeTyping(containerId, text){
-    let i=0;
+function addThinking(containerId) {
     const c = document.getElementById(containerId);
-    const div = document.createElement('div');
-    div.className="msg-row ai";
-    const bubble = document.createElement('div');
-    bubble.className="bubble";
-    div.appendChild(bubble);
-    c.appendChild(div);
+    const id = 'th-' + Date.now();
 
-    const interval = setInterval(()=>{
-        bubble.innerHTML = escapeHTML(text.slice(0,i++));
-        c.scrollTop = c.scrollHeight;
-        if(i>text.length) clearInterval(interval);
-    }, 15);
+    const div = document.createElement('div');
+    div.className = 'msg-row ai';
+    div.id = id;
+
+    div.innerHTML = `<div class="bubble thinking-bubble">
+    Processing...
+    </div>`;
+
+    c.appendChild(div);
+    c.scrollTop = c.scrollHeight;
+
+    return id;
 }
 
-function sendPlayerChat(){
-    const msg = player-chat-input.value.trim();
+function removeThinking(id) {
+    const el = document.getElementById(id);
+    if(el) el.remove();
+}
+
+function sendPlayerChat() {
+    const inp = document.getElementById('player-chat-input');
+    const msg = inp.value.trim();
     if(!msg) return;
 
     appendMsg('player-chat-display','user',msg);
-    player-chat-input.value='';
+    inp.value = "";
 
-    setTimeout(()=>{
-        fakeTyping('player-chat-display', `Response from ${state.selectedModel.name}: ${msg}`);
-    },500);
+    if(state.isThinkActive && state.selectedModel.think) {
+        const id = addThinking('player-chat-display');
+
+        setTimeout(() => {
+            removeThinking(id);
+            appendMsg('player-chat-display','ai',
+                `(${state.selectedModel.name})\nAnalyzed: ${msg}`);
+        }, 2000);
+    } else {
+        setTimeout(() => {
+            appendMsg('player-chat-display','ai',
+                `(${state.selectedModel.name}) ${msg}`);
+        }, 500);
+    }
 }
 
-/* ======================
-   UX BOOST
-====================== */
-document.querySelectorAll('textarea').forEach(t=>{
-    t.addEventListener('keydown', e=>{
-        if(e.key==='Enter' && !e.shiftKey){
+function sendOwnerChat() {
+    const inp = document.getElementById('owner-chat-input');
+    const msg = inp.value.trim();
+    if(!msg) return;
+
+    appendMsg('owner-chat-display','user',msg);
+    inp.value = "";
+
+    setTimeout(() => {
+        appendMsg('owner-chat-display','ai',
+            `Master → ${state.selectedModel.name}: ${msg}`);
+    }, 500);
+}
+
+/* =========================================
+   SETTINGS
+========================================= */
+function saveGlobalKey() {
+    state.masterKey = document.getElementById('global-api-key').value;
+    localStorage.setItem('nx_master_key', state.masterKey);
+    showToast("KEY SAVED");
+}
+
+function saveDirectives() {
+    state.directives = document.getElementById('sys-prompt-area').value;
+    localStorage.setItem('nx_directives', state.directives);
+    showToast("DIRECTIVES SAVED");
+}
+
+/* =========================================
+   TOAST
+========================================= */
+function showToast(msg, err=false) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerText = msg;
+
+    if(err) t.style.borderColor = 'var(--status-danger)';
+
+    document.body.appendChild(t);
+
+    requestAnimationFrame(() => t.classList.add('show'));
+
+    setTimeout(() => {
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 400);
+    }, 2500);
+}
+
+/* =========================================
+   INIT
+========================================= */
+window.addEventListener('load', () => {
+    renderModels();
+    renderTokens();
+    document.getElementById('global-api-key').value = state.masterKey;
+
+    const session = localStorage.getItem('nx_session');
+    if(session === 'master') showScreen('owner-screen');
+    if(session === 'player') {
+        showScreen('chat-screen');
+        syncModelUI();
+    }
+});
+
+/* ENTER SEND */
+document.querySelectorAll('textarea').forEach(tx => {
+    tx.addEventListener('keydown', function(e) {
+        if(e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            sendPlayerChat();
+            if(this.id.includes('player')) sendPlayerChat();
+            if(this.id.includes('owner')) sendOwnerChat();
         }
     });
 });
-
-/* ======================
-   TOAST FIX
-====================== */
-function showToast(msg, err=false){
-    const t=document.createElement('div');
-    t.className='toast';
-    t.innerText=msg;
-    if(err) t.style.borderColor='red';
-    document.body.appendChild(t);
-
-    requestAnimationFrame(()=>t.classList.add('show'));
-
-    setTimeout(()=>{
-        t.classList.remove('show');
-        setTimeout(()=>t.remove(),400);
-    },2500);
-}
-
-/* ======================
-   INIT
-====================== */
-window.onload = ()=>{
-    renderModels();
-    renderTokens();
-};
 </script>
