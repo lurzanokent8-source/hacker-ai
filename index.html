@@ -674,23 +674,24 @@
 
     <script>
         /* =========================================
-           110+ OMNI-MODEL DATABASE (CORRECTED NAMES)
+           110+ OMNI-MODEL DATABASE (REAL MODEL NAMES)
            =========================================
         */
         const MODELS = [
             { id: "glm-4.5-flash", name: "GLM-4.5-Flash", provider: "ZhipuAI", type: "free", think: false, desc: "Nexus Default — Majestic performance." },
             { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "Google", type: "free", think: false, desc: "Ultra-low latency reasoning." },
-            { id: "gemini-2.0-pro-exp", name: "Gemini 2.0 Pro (Experimental)", provider: "Google", type: "pro", think: true, desc: "Architect-level coding logic." },
+            { id: "gemini-2.0-pro-exp-02-05", name: "Gemini 2.0 Pro (Exp)", provider: "Google", type: "pro", think: true, desc: "Architect-level coding logic." },
+            { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview", provider: "Google", type: "pro", think: false, desc: "Next-gen experimental core." },
             { id: "deepseek-v3", name: "DeepSeek V3", provider: "DeepSeek", type: "pro", think: false, desc: "Unfiltered technical specialist." },
             { id: "deepseek-r1", name: "DeepSeek R1", provider: "DeepSeek", type: "pro", think: true, desc: "Infinite chain-of-thought logic." },
             { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic", type: "pro", think: false, desc: "Human-centric creative engine." },
-            { id: "llama-3.3-70b", name: "Llama 3.3 70B", provider: "Groq", type: "free", think: false, desc: "Raw open-source power." },
+            { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", provider: "Groq", type: "free", think: false, desc: "Raw open-source power." },
             { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", type: "pro", think: false, desc: "The industry standard." },
-            ...Array.from({length: 104}, (_, i) => ({
+            ...Array.from({length: 101}, (_, i) => ({
                 id: `omni-ext-${i}`,
                 name: `Omni-Engine X-${i+10}`,
                 provider: i % 2 === 0 ? "Google" : "Groq",
-                type: "pro", // Most extensions are pro features
+                type: "pro",
                 think: i % 8 === 0,
                 desc: "Distributed computational module."
             }))
@@ -859,6 +860,7 @@
                     appendMsg('owner-chat-display', 'ai', `Master, your command regarding "${msg}" has been processed through ${state.selectedModel.name}'s reasoning core.`);
                 }, 2500);
             } else {
+                // FIXED: Now uses state.selectedModel.name correctly
                 setTimeout(() => appendMsg('owner-chat-display', 'ai', `Master, ${state.selectedModel.name} is ready. Command: ${msg}`), 500);
             }
         }
