@@ -1,348 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexusAI — Multi-Provider AI Chat</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080810;--s1:#0f0f1e;--s2:#161628;--s3:#1d1d35;--s4:#24243f;
+  --ac:#7c6aff;--ac2:#a78bfa;--ac3:rgba(124,106,255,.12);
+  --bd:rgba(255,255,255,.07);--bd2:rgba(124,106,255,.2);
+  --tx:#eeeeff;--mx:#9999cc;--dx:#5555aa;
+  --gr:#22d3a5;--rd:#ff5577;--gd:#f59e0b;--cy:#06b6d4;--pk:#ec4899;
+  --r:12px;--font:'Segoe UI',system-ui,sans-serif
+}
+body{font-family:var(--font);background:var(--bg);color:var(--tx);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── UTILS ── */
+.screen{display:none;flex:1;overflow:hidden}
+.screen.active{display:flex;flex-direction:column}
+.inp{background:var(--s3);border:1px solid var(--bd);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--tx);font-family:var(--font);outline:none;width:100%;transition:border-color .15s}
+.inp:focus{border-color:var(--bd2)}
+.inp::placeholder{color:var(--dx)}
+.btn{border:none;border-radius:9px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.82}
+.btn-ac{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff}
+.btn-ghost{background:var(--s3);border:1px solid var(--bd);color:var(--mx)}
+.btn-ghost:hover{color:var(--tx);border-color:var(--bd2)}
+.btn-red{background:rgba(255,85,119,.12);border:1px solid rgba(255,85,119,.25);color:var(--rd)}
+.lbl{font-size:11px;font-weight:600;color:var(--dx);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;display:block}
+select.inp option{background:var(--s2)}
+
+/* tier badges */
+.tier{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;letter-spacing:.3px}
+.tier-free{background:rgba(34,211,165,.12);color:var(--gr);border:1px solid rgba(34,211,165,.2)}
+.tier-pro{background:rgba(124,106,255,.15);color:var(--ac2);border:1px solid rgba(124,106,255,.25)}
+.tier-fast{background:rgba(6,182,212,.12);color:var(--cy);border:1px solid rgba(6,182,212,.2)}
+.tier-think{background:rgba(245,158,11,.12);color:var(--gd);border:1px solid rgba(245,158,11,.2)}
+.tier-unlimited{background:rgba(236,72,153,.12);color:var(--pk);border:1px solid rgba(236,72,153,.2)}
+
+/* ══ LOGIN ══ */
+#login-screen{align-items:center;justify-content:center}
+.login-wrap{width:100%;max-width:420px;padding:20px}
+.login-box{background:var(--s1);border:1px solid var(--bd);border-radius:20px;padding:36px 32px;display:flex;flex-direction:column;gap:20px}
+.login-head{text-align:center}
+.logo-circle{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.logo-circle svg{width:32px;height:32px;fill:#fff}
+.login-head h1{font-size:22px;font-weight:700;background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-head p{font-size:13px;color:var(--mx);margin-top:3px}
+.tab-row{display:flex;gap:5px;background:var(--s2);border-radius:9px;padding:4px}
+.tab-btn{flex:1;padding:8px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--mx);transition:all .15s}
+.tab-btn.on{background:var(--ac);color:#fff}
+.err{font-size:13px;color:var(--rd);text-align:center;display:none;padding:8px 12px;background:rgba(255,85,119,.08);border:1px solid rgba(255,85,119,.18);border-radius:8px}
+
+/* ══ OWNER LAYOUT ══ */
+#owner-screen{flex-direction:row}
+.sb{width:220px;min-width:220px;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;padding:16px 0}
+.sb-logo{padding:0 16px 16px;border-bottom:1px solid var(--bd);margin-bottom:10px}
+.sb-logo h2{font-size:15px;font-weight:700;color:var(--ac)}
+.sb-logo span{font-size:11px;color:var(--dx)}
+.nav{display:flex;align-items:center;gap:9px;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--mx);border-left:3px solid transparent;transition:all .15s}
+.nav:hover{color:var(--tx);background:var(--s2)}
+.nav.on{color:var(--ac);background:rgba(124,106,255,.07);border-left-color:var(--ac)}
+.nav svg{width:15px;height:15px;flex-shrink:0}
+.nav-logout{color:var(--rd)!important}
+.sb-foot{margin-top:auto;padding:14px 16px;border-top:1px solid var(--bd)}
+.ow-badge{display:flex;align-items:center;gap:9px}
+.ow-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.ow-info p{font-size:13px;font-weight:600}
+.ow-info span{font-size:11px;color:var(--gd)}
+
+.mp{flex:1;overflow-y:auto;padding:28px;background:var(--bg)}
+.mp::-webkit-scrollbar{width:4px}
+.mp::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.sec{display:none}
+.sec.on{display:block}
+.sec-title{font-size:19px;font-weight:700;margin-bottom:4px}
+.sec-sub{font-size:13px;color:var(--mx);margin-bottom:22px}
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.card h3{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:7px;color:var(--tx)}
+.card h3 svg{width:15px;height:15px;color:var(--ac);flex-shrink:0}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:22px}
+.sc{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px}
+.sc .slb{font-size:11px;color:var(--mx);margin-bottom:5px}
+.sc .sv{font-size:24px;font-weight:700}
+.sv.blue{color:var(--ac)}
+.sv.green{color:var(--gr)}
+.sv.gold{color:var(--gd)}
+.sv.red{color:var(--rd)}
+
+/* Key gen */
+.gen-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.gen-row .ig{flex:1;min-width:130px;display:flex;flex-direction:column;gap:5px}
+.key-out{display:none;margin-top:14px;padding:12px 16px;background:rgba(34,211,165,.05);border:1px solid rgba(34,211,165,.2);border-radius:9px}
+.key-out .kv-row{display:flex;align-items:center;gap:10px;margin-top:5px}
+.key-code{font-family:monospace;font-size:17px;font-weight:700;color:var(--gr);letter-spacing:1px;flex:1}
+.key-list{display:flex;flex-direction:column;gap:7px;max-height:340px;overflow-y:auto}
+.key-list::-webkit-scrollbar{width:3px}
+.key-list::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.ki{display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:10px 13px}
+.ki.used{border-color:rgba(34,211,165,.15)}
+.ki-code{font-family:monospace;font-size:13px;color:var(--ac);flex:1}
+.ki-lbl{font-size:12px;color:var(--mx)}
+.ki-status{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px}
+.ki-status.active{background:rgba(34,211,165,.12);color:var(--gr)}
+.ki-status.used{background:rgba(124,106,255,.12);color:var(--ac2)}
+.ki-status.expired{background:rgba(255,85,119,.1);color:var(--rd)}
+
+/* Providers panel */
+.prov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:18px}
+.prov-card{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .15s;position:relative}
+.prov-card:hover{border-color:var(--bd2)}
+.prov-card.sel{border-color:var(--ac);background:rgba(124,106,255,.07)}
+.prov-card .pname{font-size:13px;font-weight:600;margin-top:6px;margin-bottom:2px}
+.prov-card .pdesc{font-size:11px;color:var(--mx);line-height:1.5}
+.prov-dot{width:8px;height:8px;border-radius:50%;margin-bottom:4px}
+.prov-cfg{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.prov-cfg h4{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.model-list{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto}
+.model-list::-webkit-scrollbar{width:3px}
+.model-list::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.mi{display:flex;flex-direction:column;gap:4px;background:var(--s3);border:1px solid var(--bd);border-radius:8px;padding:10px 12px}
+.mi-top{display:flex;align-items:center;gap:7px}
+.mi-name{font-size:13px;font-weight:600}
+.mi-desc{font-size:11px;color:var(--mx)}
+.mi-tiers{display:flex;gap:4px;flex-wrap:wrap}
+.info-box{background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:9px;padding:13px 15px;font-size:12px;color:var(--mx);line-height:1.7}
+.info-box a{color:var(--ac2)}
+.info-box strong{color:var(--tx)}
+
+/* Settings */
+.sg{display:flex;flex-direction:column;gap:12px}
+.sr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--s2);border-radius:9px;border:1px solid var(--bd)}
+.sr label{font-size:13px;font-weight:500}
+.sr small{font-size:11px;color:var(--dx);margin-top:2px;display:block}
+.toggle{position:relative;width:42px;height:23px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.tslider{position:absolute;inset:0;background:var(--s4);border-radius:999px;cursor:pointer;transition:.2s}
+.tslider:before{content:'';position:absolute;width:17px;height:17px;left:3px;top:3px;background:var(--dx);border-radius:50%;transition:.2s}
+.toggle input:checked + .tslider{background:var(--ac)}
+.toggle input:checked + .tslider:before{transform:translateX(19px);background:#fff}
+
+/* Owner chat embed */
+#sec-mychat{height:calc(100vh - 80px);display:none;flex-direction:column}
+#sec-mychat.on{display:flex}
+.embed-chat{flex:1;display:flex;flex-direction:column;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;min-height:0}
+.embed-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.embed-msgs::-webkit-scrollbar{width:3px}
+.embed-msgs::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.embed-input{padding:10px;border-top:1px solid var(--bd)}
+
+/* ══ CHAT SCREEN ══ */
+#chat-screen{flex-direction:column}
+.ch{display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--s1);border-bottom:1px solid var(--bd);flex-shrink:0}
+.ch-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ch-av svg{width:17px;height:17px;fill:#fff}
+.ch-info h2{font-size:14px;font-weight:600}
+.ch-info p{font-size:11px;color:var(--gr)}
+.ch-actions{margin-left:auto;display:flex;align-items:center;gap:7px}
+.ib{background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:6px;cursor:pointer;color:var(--mx);display:flex;align-items:center;justify-content:center;transition:all .15s}
+.ib:hover{color:var(--tx);border-color:var(--bd2)}
+
+/* Model selector in header */
+.model-sel-btn{display:flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:5px 11px;cursor:pointer;transition:all .15s;font-size:12px;color:var(--mx)}
+.model-sel-btn:hover{border-color:var(--bd2);color:var(--tx)}
+.model-sel-btn .msb-name{font-weight:600;color:var(--tx);font-size:13px}
+.model-sel-btn svg{width:13px;height:13px}
+
+/* Model picker dropdown */
+.mdrop{position:fixed;top:56px;right:16px;width:340px;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);z-index:100;display:none;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.5)}
+.mdrop.open{display:block}
+.mdrop-head{padding:12px 14px;border-bottom:1px solid var(--bd);font-size:13px;font-weight:600;color:var(--tx);display:flex;align-items:center;justify-content:space-between}
+.mdrop-body{overflow-y:auto;max-height:480px}
+.mdrop-body::-webkit-scrollbar{width:3px}
+.mdrop-body::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.prov-section{border-bottom:1px solid var(--bd)}
+.prov-hdr{padding:8px 14px;font-size:11px;font-weight:700;color:var(--dx);text-transform:uppercase;letter-spacing:.6px;background:var(--s2);display:flex;align-items:center;gap:7px}
+.prov-hdr .phd{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.model-opt{display:flex;flex-direction:column;gap:3px;padding:8px 14px;cursor:pointer;transition:background .12s}
+.model-opt:hover{background:rgba(124,106,255,.07)}
+.model-opt.sel{background:rgba(124,106,255,.12)}
+.mo-top{display:flex;align-items:center;gap:7px}
+.mo-name{font-size:13px;font-weight:500}
+.mo-desc{font-size:11px;color:var(--mx)}
+.mo-tiers{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
+
+/* messages */
+#msgs{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}
+#msgs::-webkit-scrollbar{width:4px}
+#msgs::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.welcome{margin:auto;text-align:center;padding:24px 16px}
+.wl-icon{width:56px;height:56px;background:var(--ac3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;border:1px solid var(--bd2)}
+.wl-icon svg{width:26px;height:26px;fill:var(--ac)}
+.welcome h2{font-size:19px;font-weight:700;margin-bottom:7px}
+.welcome p{font-size:13px;color:var(--mx);margin-bottom:18px;max-width:280px;margin-left:auto;margin-right:auto}
+.sugs{display:flex;flex-direction:column;gap:6px;max-width:300px;margin:0 auto}
+.sug{background:var(--s1);border:1px solid var(--bd);border-radius:9px;padding:8px 13px;font-size:13px;color:var(--tx);cursor:pointer;text-align:left;transition:all .15s}
+.sug:hover{border-color:var(--ac);background:var(--ac3)}
+
+.msg{display:flex;gap:9px;max-width:82%;animation:fu .2s ease}
+@keyframes fu{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg.ai{align-self:flex-start}
+.msg-av{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.msg.user .msg-av{background:var(--ac);color:#fff}
+.msg.ai .msg-av{background:var(--s3);color:var(--ac);font-size:14px}
+.msg-wrap{display:flex;flex-direction:column;gap:6px;min-width:0}
+.bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+.msg.user .bubble{background:var(--ac);color:#fff;border-bottom-right-radius:4px}
+.msg.ai .bubble{background:var(--s1);color:var(--tx);border:1px solid var(--bd);border-bottom-left-radius:4px}
+
+/* thinking block */
+.think-block{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.18);border-radius:9px;overflow:hidden}
+.think-hdr{display:flex;align-items:center;gap:7px;padding:8px 12px;cursor:pointer;font-size:12px;font-weight:600;color:var(--gd);user-select:none}
+.think-hdr svg{width:13px;height:13px;flex-shrink:0;transition:transform .2s}
+.think-hdr.open svg{transform:rotate(90deg)}
+.think-body{display:none;padding:10px 12px;font-size:12px;color:rgba(245,158,11,.7);line-height:1.7;border-top:1px solid rgba(245,158,11,.12);white-space:pre-wrap;word-break:break-word;max-height:240px;overflow-y:auto}
+.think-body.show{display:block}
+
+/* typing */
+.typing .bubble{display:flex;gap:5px;align-items:center;padding:14px 16px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--mx);animation:bonce 1.2s infinite ease-in-out}
+.dot:nth-child(2){animation-delay:.2s}
+.dot:nth-child(3){animation-delay:.4s}
+@keyframes bonce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-7px)}}
+
+/* input bar */
+.cf{padding:11px 13px;background:var(--s1);border-top:1px solid var(--bd);flex-shrink:0}
+.think-toggle-row{display:flex;align-items:center;gap:9px;margin-bottom:8px;display:none}
+.think-toggle-row.vis{display:flex}
+.tt-label{font-size:12px;font-weight:600;color:var(--gd);display:flex;align-items:center;gap:5px}
+.tt-label svg{width:13px;height:13px}
+.iw{display:flex;gap:7px;align-items:flex-end;background:var(--s2);border:1px solid var(--bd);border-radius:13px;padding:7px 7px 7px 13px;transition:border-color .15s}
+.iw:focus-within{border-color:var(--bd2)}
+#msg-in{flex:1;background:transparent;border:none;outline:none;font-size:14px;color:var(--tx);font-family:var(--font);resize:none;max-height:110px;line-height:1.5;padding:3px 0}
+#msg-in::placeholder{color:var(--dx)}
+.send-btn{width:34px;height:34px;background:linear-gradient(135deg,var(--ac),var(--ac2));border:none;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s}
+.send-btn:hover{opacity:.85}
+.send-btn:disabled{opacity:.35;cursor:not-allowed}
+.send-btn svg{width:15px;height:15px;fill:#fff}
+.cf-info{font-size:11px;color:var(--dx);text-align:center;margin-top:7px}
+
+/* toast */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--s1);border:1px solid var(--bd2);border-radius:9px;padding:9px 15px;font-size:13px;color:var(--tx);z-index:999;animation:fui .2s ease;pointer-events:none}
+@keyframes fui{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* scrollbar global */
+*::-webkit-scrollbar{width:4px;height:4px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div class="screen active" id="login-screen">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div class="login-head">
+        <div class="logo-circle">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14v-4H7l5-8v4h4l-5 8z"/></svg>
+        </div>
+        <h1>NexusAI</h1>
+        <p>Multi-Provider AI Chat Platform</p>
+      </div>
+      <div class="tab-row">
+        <button class="tab-btn on" onclick="setTab('owner')">Owner Login</button>
+        <button class="tab-btn" onclick="setTab('player')">Player Login</button>
+      </div>
+      <div id="fld-owner">
+        <label class="lbl">Owner Password</label>
+        <input class="inp" type="password" id="inp-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div id="fld-player" style="display:none">
+        <label class="lbl">Session Key</label>
+        <input class="inp" id="inp-key" placeholder="NX-XXXXXX" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="err" id="err"></div>
+      <button class="btn btn-ac" onclick="doLogin()">Sign In →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ OWNER ══════════════ -->
+<div class="screen" id="owner-screen">
+  <div class="sb">
+    <div class="sb-logo"><h2>NexusAI</h2><span>Owner Dashboard</span></div>
+    <div class="nav on" onclick="goSec('dashboard',this)" id="nav-dashboard">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg>Dashboard
+    </div>
+    <div class="nav" onclick="goSec('keys',this)" id="nav-keys">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.65 10A6 6 0 1 0 7 18H21v-2h-2v-2h-2v-2h-2.09A5.99 5.99 0 0 0 12.65 10zM7 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/></svg>Session Keys
+    </div>
+    <div class="nav" onclick="goSec('providers',this)" id="nav-providers">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V15a1 1 0 0 0-2 0v1.93A8 8 0 0 1 4.07 11H6a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V6a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H18a1 1 0 0 0 0 2h1.93A8 8 0 0 1 13 16.93z"/></svg>AI Providers
+    </div>
+    <div class="nav" onclick="goSec('settings',this)" id="nav-settings">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94 0 .31.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>Settings
+    </div>
+    <div class="nav" onclick="goSec('mychat',this)" id="nav-mychat">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>My Chat
+    </div>
+    <div class="nav nav-logout" onclick="logout()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>Logout
+    </div>
+    <div class="sb-foot">
+      <div class="ow-badge">
+        <div class="ow-av">O</div>
+        <div class="ow-info"><p>Owner</p><span>★ Master Access</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mp">
+    <!-- Dashboard -->
+    <div class="sec on" id="sec-dashboard">
+      <div class="sec-title">Dashboard</div>
+      <div class="sec-sub">Welcome back, Owner</div>
+      <div class="stats">
+        <div class="sc"><div class="slb">Total Keys</div><div class="sv blue" id="st-total">0</div></div>
+        <div class="sc"><div class="slb">Active</div><div class="sv green" id="st-active">0</div></div>
+        <div class="sc"><div class="slb">Used</div><div class="sv gold" id="st-used">0</div></div>
+        <div class="sc"><div class="slb">Expired</div><div class="sv red" id="st-exp">0</div></div>
+      </div>
+      <div class="card">
+        <h3><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.65 10A6 6 0 1 0 7 18H21v-2h-2v-2h-2v-2h-2.09A5.99 5.99 0 0 0 12.65 10zM7 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/></svg>Generate Session Key</h3>
+        <div class="gen-row">
+          <div class="ig"><label class="lbl">Label</label><input class="inp" id="db-label" placeholder="e.g. Friend1"></div>
+          <div class="ig"><label class="lbl">Expires</label>
+            <select class="inp" id="db-exp">
+              <option value="0">Never</option><option value="1">1 day</option><option value="7">7 days</option><option value="30">30 days</option>
+            </select>
+          </div>
+          <button class="btn btn-ac" onclick="genKey('db')" style="align-self:flex-end;white-space:nowrap">+ Generate</button>
+        </div>
+        <div class="key-out" id="db-out">
+          <div style="font-size:11px;color:var(--mx)">New key generated — share this with your friend:</div>
+          <div class="kv-row"><span class="key-code" id="db-code"></span><button class="btn btn-ghost" style="padding:5px 11px;font-size:12px" onclick="copyCode('db-code')">Copy</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>Quick Start</h3>
+        <ol style="font-size:13px;color:var(--mx);line-height:2.2;padding-left:18px">
+          <li>Go to <strong style="color:var(--tx)">AI Providers</strong> → pick a provider → paste your API key</li>
+          <li>Generate a key above and share it with your friend</li>
+          <li>They enter the key on the login screen to chat</li>
+          <li>Use <strong style="color:var(--tx)">My Chat</strong> to chat yourself as owner</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Keys -->
+    <div class="sec" id="sec-keys">
+      <div class="sec-title">Session Keys</div>
+      <div class="sec-sub">Generate and manage access keys for your friends</div>
+      <div class="card">
+        <h3><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.65 10A6 6 0 1 0 7 18H21v-2h-2v-2h-2v-2h-2.09A5.99 5.99 0 0 0 12.65 10zM7 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/></svg>Generate New Key</h3>
+        <div class="gen-row">
+          <div class="ig"><label class="lbl">Label</label><input class="inp" id="kp-label" placeholder="Who is this for?"></div>
+          <div class="ig"><label class="lbl">Expires in</label>
+            <select class="inp" id="kp-exp">
+              <option value="0">Never</option><option value="1">1 day</option><option value="7">7 days</option><option value="30">30 days</option>
+            </select>
+          </div>
+          <div class="ig"><label class="lbl">Max uses</label>
+            <select class="inp" id="kp-uses">
+              <option value="0">Unlimited</option><option value="1">1 time</option><option value="5">5 times</option><option value="20">20 times</option>
+            </select>
+          </div>
+          <button class="btn btn-ac" onclick="genKey('kp')" style="align-self:flex-end;white-space:nowrap">+ Generate</button>
+        </div>
+        <div class="key-out" id="kp-out">
+          <div style="font-size:11px;color:var(--mx)">Share this key:</div>
+          <div class="kv-row"><span class="key-code" id="kp-code"></span><button class="btn btn-ghost" style="padding:5px 11px;font-size:12px" onclick="copyCode('kp-code')">Copy</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>All Keys</h3>
+        <div class="key-list" id="key-list"><div style="color:var(--dx);font-size:13px;text-align:center;padding:18px">No keys yet.</div></div>
+        <button class="btn btn-red" onclick="clearKeys()" style="margin-top:14px;padding:7px 14px;font-size:12px">Delete All Keys</button>
+      </div>
+    </div>
+
+    <!-- Providers -->
+    <div class="sec" id="sec-providers">
+      <div class="sec-title">AI Providers</div>
+      <div class="sec-sub">Select a provider, configure your API key, and explore available models</div>
+      <div class="prov-grid" id="prov-grid"></div>
+      <div id="prov-detail"></div>
+    </div>
+
+    <!-- Settings -->
+    <div class="sec" id="sec-settings">
+      <div class="sec-title">Settings</div>
+      <div class="sec-sub">Customize NexusAI behavior</div>
+      <div class="card">
+        <h3>Owner Password</h3>
+        <div style="display:flex;gap:10px;margin-bottom:6px">
+          <input class="inp" type="password" id="inp-newpass" placeholder="New password..." style="flex:1">
+          <button class="btn btn-ac" onclick="changePass()">Update</button>
+        </div>
+        <p style="font-size:12px;color:var(--dx)">Change the password to access the owner dashboard.</p>
+      </div>
+      <div class="card">
+        <h3>AI Personality (System Prompt)</h3>
+        <textarea class="inp" id="sys-prompt" rows="5" style="resize:vertical;margin-bottom:10px">You are NexusAI, a helpful, smart, and friendly AI assistant. You can help with coding, writing, analysis, math, creative tasks, and general questions. Be clear, concise, and engaging.</textarea>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="ig" style="flex:1"><label class="lbl">Temperature (creativity)</label><input class="inp" type="number" id="inp-temp" min="0" max="2" step="0.1" value="0.8" style="width:100px"></div>
+          <button class="btn btn-ac" onclick="saveSettings()" style="align-self:flex-end">Save Settings</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Danger Zone</h3>
+        <button class="btn btn-red" onclick="resetAll()">Reset Everything</button>
+      </div>
+    </div>
+
+    <!-- My Chat -->
+    <div class="sec" id="sec-mychat">
+      <div class="sec-title" style="flex-shrink:0;margin-bottom:4px">My Chat</div>
+      <div class="sec-sub" style="flex-shrink:0">Direct owner chat — full access</div>
+      <div class="embed-chat">
+        <div class="embed-msgs" id="oc-msgs">
+          <div style="margin:auto;text-align:center;color:var(--dx);font-size:13px;padding:20px">Owner chat ready. Select a provider in AI Providers first.</div>
+        </div>
+        <div class="embed-input">
+          <div class="think-toggle-row" id="oc-think-row">
+            <span class="tt-label"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V15a1 1 0 0 0-2 0v1.93A8 8 0 0 1 4.07 11H6a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V6a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H18a1 1 0 0 0 0 2h1.93A8 8 0 0 1 13 16.93z"/></svg>Deep Thinking</span>
+            <label class="toggle"><input type="checkbox" id="oc-think-tog"><div class="tslider"></div></label>
+          </div>
+          <div class="iw">
+            <textarea id="oc-msg" placeholder="Message NexusAI..." rows="1" style="background:transparent;border:none;outline:none;font-size:14px;color:var(--tx);font-family:var(--font);resize:none;max-height:80px;line-height:1.5;padding:3px 0;flex:1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendOwner()}" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+            <button class="send-btn" onclick="sendOwner()">
+              <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ CHAT ══════════════ -->
+<div class="screen" id="chat-screen">
+  <div class="ch">
+    <div class="ch-av"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14v-4H7l5-8v4h4l-5 8z"/></svg></div>
+    <div class="ch-info"><h2>NexusAI</h2><p id="ch-status">● Online</p></div>
+    <div class="ch-actions">
+      <div class="model-sel-btn" onclick="toggleDrop()">
+        <span class="msb-name" id="sel-label">Select Model</span>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
+      <button class="ib" onclick="clearChat()" title="Clear chat">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      </button>
+      <button class="ib" onclick="logout()" title="Logout">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Model picker dropdown -->
+  <div class="mdrop" id="mdrop">
+    <div class="mdrop-head">
+      <span>Select Provider &amp; Model</span>
+      <span onclick="closeDrop()" style="cursor:pointer;color:var(--mx);font-size:18px;line-height:1">×</span>
+    </div>
+    <div class="mdrop-body" id="mdrop-body"></div>
+  </div>
+
+  <div id="msgs">
+    <div class="welcome" id="welcome">
+      <div class="wl-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14v-4H7l5-8v4h4l-5 8z"/></svg></div>
+      <h2>Hi, I'm NexusAI!</h2>
+      <p>Choose a model above then ask me anything</p>
+      <div class="sugs">
+        <button class="sug" onclick="quickSug(this)">Write a short story about a robot exploring space</button>
+        <button class="sug" onclick="quickSug(this)">Explain quantum computing in simple terms</button>
+        <button class="sug" onclick="quickSug(this)">Help me write a Python script to sort files by date</button>
+        <button class="sug" onclick="quickSug(this)">Give me 5 unique startup ideas for 2025</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cf">
+    <div class="think-toggle-row" id="think-row">
+      <span class="tt-label">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V15a1 1 0 0 0-2 0v1.93A8 8 0 0 1 4.07 11H6a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V6a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H18a1 1 0 0 0 0 2h1.93A8 8 0 0 1 13 16.93z"/></svg>
+        Deep Thinking Mode
+      </span>
+      <label class="toggle"><input type="checkbox" id="think-tog"><div class="tslider"></div></label>
+      <span style="font-size:11px;color:var(--dx)">Shows AI reasoning process</span>
+    </div>
+    <div class="iw">
+      <textarea id="msg-in" placeholder="Message NexusAI..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMsg()">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+    <div class="cf-info">NexusAI may make mistakes. Verify important information.</div>
+  </div>
+</div>
+
 <script>
-/* =========================================
-   MODEL DATABASE (SAFE VERSION)
-========================================= */
-const MODELS = [
-    { id: "glm-4.5-flash", name: "GLM-4.5-Flash", provider: "ZhipuAI", type: "free", think: false, desc: "Default engine" },
-    { id: "gemini-2.0-flash", name: "Gemini Flash", provider: "Google", type: "free", think: false, desc: "Fast responses" },
-    { id: "deepseek-r1", name: "DeepSeek R1", provider: "DeepSeek", type: "pro", think: true, desc: "Reasoning model" }
-];
-
-/* ADD EXTRA MODELS SAFELY */
-for (let i = 0; i < 20; i++) {
-    MODELS.push({
-        id: "omni-" + i,
-        name: "Omni Engine " + i,
-        provider: (i % 2 === 0) ? "Google" : "Groq",
-        type: "pro",
-        think: (i % 4 === 0),
-        desc: "Extended module"
-    });
-}
-
-/* =========================================
-   STATE
-========================================= */
-let state = {
-    authMode: 'master',
-    selectedModel: MODELS[0],
-    tokens: JSON.parse(localStorage.getItem('nx_tokens') || '[]'),
-    masterKey: localStorage.getItem('nx_master_key') || '',
-    masterPass: 'admin123',
-    isThinkActive: false,
-    directives: localStorage.getItem('nx_directives') || ""
+// ══════════════ PROVIDERS DATA ══════════════
+const PROVIDERS = {
+  zhipu:{
+    name:'Zhipu AI (BigModel)',short:'Zhipu AI',color:'#6366f1',
+    endpoint:'https://open.bigmodel.cn/api/paas/v4/chat/completions',format:'openai',
+    getKeyUrl:'https://open.bigmodel.cn/usercenter/apikeys',
+    pricingUrl:'https://open.bigmodel.cn/pricing',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://open.bigmodel.cn" target="_blank">open.bigmodel.cn</a><br><strong>Step 2:</strong> Register a free account<br><strong>Step 3:</strong> User Center → API Keys → Create Key<br><strong>Free tier:</strong> GLM-4-Flash and GLM-Z1-Flash are completely FREE with generous limits.',
+    models:[
+      {id:'glm-4-flash',name:'GLM-4 Flash',tiers:['free','fast'],desc:'Fast & free — great everyday assistant',thinking:false},
+      {id:'glm-4-air',name:'GLM-4 Air',tiers:['free'],desc:'Lightweight, efficient for simple tasks',thinking:false},
+      {id:'glm-4-airx',name:'GLM-4 AirX',tiers:['free','fast'],desc:'Faster variant of GLM-4 Air',thinking:false},
+      {id:'glm-4-plus',name:'GLM-4 Plus',tiers:['pro'],desc:'More powerful, better reasoning & analysis',thinking:false},
+      {id:'glm-4-long',name:'GLM-4 Long',tiers:['pro'],desc:'128K context — perfect for long documents',thinking:false},
+      {id:'glm-z1-flash',name:'GLM-Z1 Flash',tiers:['free','think'],desc:'Free deep thinking — shows reasoning steps',thinking:true},
+      {id:'glm-z1-plus',name:'GLM-Z1 Plus',tiers:['pro','think'],desc:'Advanced deep reasoning model',thinking:true},
+      {id:'glm-z1-rumination',name:'GLM-Z1 Rumination',tiers:['pro','think'],desc:'Maximum depth thinking — smartest Zhipu model',thinking:true},
+    ]
+  },
+  anthropic:{
+    name:'Anthropic',short:'Anthropic',color:'#d97706',
+    endpoint:'https://api.anthropic.com/v1/messages',format:'anthropic',
+    getKeyUrl:'https://console.anthropic.com/settings/keys',
+    pricingUrl:'https://www.anthropic.com/pricing',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br><strong>Step 2:</strong> Create an account<br><strong>Step 3:</strong> Settings → API Keys → Create Key<br><strong>Step 4:</strong> Add billing at Settings → Billing (credit card required)<br><strong>Note:</strong> No free tier — you pay per token used.',
+    models:[
+      {id:'claude-haiku-4-5',name:'Claude Haiku 3.5',tiers:['fast'],desc:'Fastest Claude — instant responses, very affordable',thinking:false},
+      {id:'claude-sonnet-4-5',name:'Claude Sonnet 4.5',tiers:['pro'],desc:'Best balance of intelligence and speed',thinking:false},
+      {id:'claude-sonnet-4-20250514',name:'Claude Sonnet 4',tiers:['pro','think'],desc:'Highly intelligent with extended thinking mode',thinking:true},
+      {id:'claude-opus-4-20250514',name:'Claude Opus 4',tiers:['pro','think'],desc:'Most powerful Claude — research & complex analysis',thinking:true},
+    ]
+  },
+  google:{
+    name:'Google Gemini',short:'Google',color:'#10b981',
+    endpoint:'__google__',format:'google',
+    getKeyUrl:'https://aistudio.google.com/app/apikey',
+    pricingUrl:'https://ai.google.dev/pricing',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a><br><strong>Step 2:</strong> Sign in with your Google account<br><strong>Step 3:</strong> Click "Get API Key" → Create API Key<br><strong>Free tier:</strong> Gemini 1.5 Flash and 2.0 Flash are FREE with daily limits. For higher usage, link a Google Cloud billing account.',
+    models:[
+      {id:'gemini-1.5-flash',name:'Gemini 1.5 Flash',tiers:['free','fast'],desc:'Fast & free, 1M context window',thinking:false},
+      {id:'gemini-1.5-flash-8b',name:'Gemini 1.5 Flash 8B',tiers:['free','fast'],desc:'Smallest Gemini — ultra fast responses',thinking:false},
+      {id:'gemini-1.5-pro',name:'Gemini 1.5 Pro',tiers:['pro'],desc:'Advanced reasoning, 2M token context',thinking:false},
+      {id:'gemini-2.0-flash',name:'Gemini 2.0 Flash',tiers:['free','fast'],desc:'Next-gen speed, multimodal capable',thinking:false},
+      {id:'gemini-2.0-flash-thinking-exp',name:'Gemini 2.0 Flash Thinking',tiers:['free','think'],desc:'Free thinking model — see reasoning steps',thinking:true},
+      {id:'gemini-2.5-flash-preview-05-20',name:'Gemini 2.5 Flash',tiers:['pro','fast'],desc:'Latest Flash with adaptive thinking',thinking:false},
+      {id:'gemini-2.5-pro-preview-06-05',name:'Gemini 2.5 Pro',tiers:['pro','think'],desc:'Most powerful Gemini — deep reasoning',thinking:true},
+    ]
+  },
+  openai:{
+    name:'OpenAI',short:'OpenAI',color:'#06b6d4',
+    endpoint:'https://api.openai.com/v1/chat/completions',format:'openai',
+    getKeyUrl:'https://platform.openai.com/api-keys',
+    pricingUrl:'https://openai.com/pricing',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://platform.openai.com" target="_blank">platform.openai.com</a><br><strong>Step 2:</strong> Create an account<br><strong>Step 3:</strong> API Keys → Create new secret key<br><strong>Step 4:</strong> Add credits at Billing → Add payment method<br><strong>Note:</strong> No free API tier. Starts from $5 top-up.',
+    models:[
+      {id:'gpt-4o-mini',name:'GPT-4o Mini',tiers:['fast','pro'],desc:'Affordable & fast — great daily driver',thinking:false},
+      {id:'gpt-4o',name:'GPT-4o',tiers:['pro'],desc:'Flagship GPT — powerful multimodal model',thinking:false},
+      {id:'gpt-4.1',name:'GPT-4.1',tiers:['pro'],desc:'Latest GPT-4 series — improved coding',thinking:false},
+      {id:'gpt-4.1-mini',name:'GPT-4.1 Mini',tiers:['fast','pro'],desc:'Faster and cheaper GPT-4.1',thinking:false},
+      {id:'o1-mini',name:'o1 Mini',tiers:['think','pro'],desc:'Fast reasoning — great for math & code',thinking:true},
+      {id:'o1',name:'o1',tiers:['think','pro'],desc:'Thinks before answering — highly accurate',thinking:true},
+      {id:'o3-mini',name:'o3 Mini',tiers:['think','pro'],desc:'Latest compact reasoning model',thinking:true},
+      {id:'o4-mini',name:'o4 Mini',tiers:['think','pro'],desc:'Newest reasoning model — very capable',thinking:true},
+    ]
+  },
+  groq:{
+    name:'Groq',short:'Groq',color:'#f97316',
+    endpoint:'https://api.groq.com/openai/v1/chat/completions',format:'openai',
+    getKeyUrl:'https://console.groq.com/keys',
+    pricingUrl:'https://groq.com/pricing',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://console.groq.com" target="_blank">console.groq.com</a><br><strong>Step 2:</strong> Sign up (free!)<br><strong>Step 3:</strong> API Keys → Create API Key<br><strong>Free tier:</strong> Very generous free limits — no credit card needed! Groq is ultra-fast inference hardware.',
+    models:[
+      {id:'llama-3.1-8b-instant',name:'Llama 3.1 8B',tiers:['free','fast'],desc:'Ultra fast — best for real-time chat',thinking:false},
+      {id:'llama-3.3-70b-versatile',name:'Llama 3.3 70B',tiers:['free','pro'],desc:'Large open-source — very capable & free',thinking:false},
+      {id:'mixtral-8x7b-32768',name:'Mixtral 8x7B',tiers:['free','fast'],desc:'Mixture of experts — smart and fast',thinking:false},
+      {id:'gemma2-9b-it',name:'Gemma 2 9B',tiers:['free','fast'],desc:"Google's open model — fast on Groq",thinking:false},
+      {id:'llama3-groq-70b-8192-tool-use-preview',name:'Llama 3 70B Tools',tiers:['free'],desc:'Optimized for tool use & function calling',thinking:false},
+      {id:'deepseek-r1-distill-llama-70b',name:'DeepSeek R1 Distill 70B',tiers:['free','think'],desc:'Thinking model on ultra-fast Groq — free!',thinking:true},
+      {id:'qwen-qwq-32b',name:'QwQ 32B (Qwen)',tiers:['free','think'],desc:"Qwen's reasoning model — free on Groq",thinking:true},
+    ]
+  },
+  deepseek:{
+    name:'DeepSeek',short:'DeepSeek',color:'#8b5cf6',
+    endpoint:'https://api.deepseek.com/chat/completions',format:'deepseek',
+    getKeyUrl:'https://platform.deepseek.com/api_keys',
+    pricingUrl:'https://platform.deepseek.com/api-docs/pricing',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a><br><strong>Step 2:</strong> Register an account<br><strong>Step 3:</strong> API Keys → Create Key<br><strong>Step 4:</strong> Top-up balance at the Billing page<br><strong>Note:</strong> Very affordable pricing — one of the cheapest APIs available!',
+    models:[
+      {id:'deepseek-chat',name:'DeepSeek V3',tiers:['pro','fast'],desc:'Flagship model — top-tier performance at low cost',thinking:false},
+      {id:'deepseek-reasoner',name:'DeepSeek R1',tiers:['pro','think'],desc:'Full R1 reasoning — shows complete thought process',thinking:true},
+    ]
+  },
+  mistral:{
+    name:'Mistral AI',short:'Mistral',color:'#ec4899',
+    endpoint:'https://api.mistral.ai/v1/chat/completions',format:'openai',
+    getKeyUrl:'https://console.mistral.ai/api-keys',
+    pricingUrl:'https://mistral.ai/technology/#pricing',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a><br><strong>Step 2:</strong> Create an account<br><strong>Step 3:</strong> API Keys → Create new key<br><strong>Free trial:</strong> Free trial credits available on signup. Add billing for continued access.',
+    models:[
+      {id:'open-mistral-nemo',name:'Mistral Nemo',tiers:['free'],desc:'Open-weight model, 128K context — free to use',thinking:false},
+      {id:'mistral-small-latest',name:'Mistral Small',tiers:['fast','pro'],desc:'Fast and affordable — great all-rounder',thinking:false},
+      {id:'mistral-medium-latest',name:'Mistral Medium',tiers:['pro'],desc:'Balanced capability and cost',thinking:false},
+      {id:'mistral-large-latest',name:'Mistral Large',tiers:['pro'],desc:'Most powerful Mistral — complex reasoning',thinking:false},
+      {id:'codestral-latest',name:'Codestral',tiers:['pro','fast'],desc:'Specialized for coding — superior code gen',thinking:false},
+      {id:'magistral-small-2506',name:'Magistral Small',tiers:['pro','think'],desc:'Mistral reasoning model — smaller and faster',thinking:true},
+      {id:'magistral-medium-2506',name:'Magistral Medium',tiers:['pro','think'],desc:'Mistral reasoning model — strong performance',thinking:true},
+    ]
+  },
+  xai:{
+    name:'xAI (Grok)',short:'xAI',color:'#14b8a6',
+    endpoint:'https://api.x.ai/v1/chat/completions',format:'openai',
+    getKeyUrl:'https://console.x.ai',
+    pricingUrl:'https://x.ai/api',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://console.x.ai" target="_blank">console.x.ai</a><br><strong>Step 2:</strong> Sign in with your X (Twitter) account<br><strong>Step 3:</strong> API Keys → Create Key<br><strong>Free tier:</strong> Monthly free credits available. Add billing for more usage.',
+    models:[
+      {id:'grok-3-mini-fast-beta',name:'Grok 3 Mini Fast',tiers:['fast'],desc:'Quickest Grok — lightweight responses',thinking:false},
+      {id:'grok-3-fast-beta',name:'Grok 3 Fast',tiers:['pro','fast'],desc:'Fast Grok 3 — real-time capable',thinking:false},
+      {id:'grok-3-beta',name:'Grok 3',tiers:['pro'],desc:"Flagship Grok — smart, witty, and aware of X/Twitter",thinking:false},
+      {id:'grok-3-mini-beta',name:'Grok 3 Mini (Thinking)',tiers:['think'],desc:'Compact Grok with reasoning capabilities',thinking:true},
+    ]
+  },
+  together:{
+    name:'Together AI',short:'Together',color:'#a78bfa',
+    endpoint:'https://api.together.xyz/v1/chat/completions',format:'openai',
+    getKeyUrl:'https://api.together.xyz/settings/api-keys',
+    pricingUrl:'https://www.together.ai/pricing',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://api.together.xyz" target="_blank">api.together.xyz</a><br><strong>Step 2:</strong> Sign up<br><strong>Step 3:</strong> Settings → API Keys<br><strong>Free credits:</strong> $5 free credits on signup! Great way to try premium open-source models. Add billing at Settings → Billing.',
+    models:[
+      {id:'meta-llama/Llama-3.3-70B-Instruct-Turbo',name:'Llama 3.3 70B Turbo',tiers:['fast','pro'],desc:'Fast Llama 3.3 — excellent for most tasks',thinking:false},
+      {id:'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo',name:'Llama 3.1 405B',tiers:['pro'],desc:'Largest open-source model — incredibly powerful',thinking:false},
+      {id:'Qwen/Qwen2.5-72B-Instruct-Turbo',name:'Qwen 2.5 72B',tiers:['pro','fast'],desc:"Alibaba's multilingual powerhouse",thinking:false},
+      {id:'Qwen/Qwen2.5-7B-Instruct-Turbo',name:'Qwen 2.5 7B',tiers:['fast','free'],desc:'Small but capable Qwen model',thinking:false},
+      {id:'mistralai/Mistral-7B-Instruct-v0.3',name:'Mistral 7B',tiers:['free','fast'],desc:'Small, fast, open source classic',thinking:false},
+      {id:'deepseek-ai/DeepSeek-R1',name:'DeepSeek R1 (Full)',tiers:['think','pro'],desc:'Full DeepSeek R1 reasoning model via Together',thinking:true},
+      {id:'Qwen/QwQ-32B-Preview',name:'QwQ 32B',tiers:['think'],desc:"Qwen's reasoning model",thinking:true},
+    ]
+  },
+  openrouter:{
+    name:'OpenRouter',short:'OpenRouter',color:'#f59e0b',
+    endpoint:'https://openrouter.ai/api/v1/chat/completions',format:'openrouter',
+    getKeyUrl:'https://openrouter.ai/keys',
+    pricingUrl:'https://openrouter.ai/models',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://openrouter.ai" target="_blank">openrouter.ai</a><br><strong>Step 2:</strong> Sign up with GitHub or email<br><strong>Step 3:</strong> Keys → Create Key<br><strong>Free models:</strong> Many models marked ":free" are completely free! Add credits at openrouter.ai/credits for paid models. Access 200+ models with ONE API key.',
+    models:[
+      {id:'meta-llama/llama-3.3-70b-instruct:free',name:'Llama 3.3 70B (Free)',tiers:['free','fast'],desc:'Top open-source model — completely free!',thinking:false},
+      {id:'google/gemma-3-27b-it:free',name:'Gemma 3 27B (Free)',tiers:['free'],desc:"Google's open model, free on OpenRouter",thinking:false},
+      {id:'deepseek/deepseek-r1:free',name:'DeepSeek R1 (Free)',tiers:['free','think'],desc:'Full reasoning model — free on OpenRouter!',thinking:true},
+      {id:'qwen/qwq-32b:free',name:'QwQ 32B (Free)',tiers:['free','think'],desc:'Qwen reasoning model — free tier',thinking:true},
+      {id:'anthropic/claude-sonnet-4-5',name:'Claude Sonnet 4.5',tiers:['pro'],desc:'Access Claude via OpenRouter',thinking:false},
+      {id:'openai/gpt-4o',name:'GPT-4o',tiers:['pro'],desc:'Access OpenAI via OpenRouter',thinking:false},
+      {id:'google/gemini-2.5-pro-preview',name:'Gemini 2.5 Pro',tiers:['pro','think'],desc:"Google's best model via OpenRouter",thinking:true},
+      {id:'x-ai/grok-3-beta',name:'Grok 3',tiers:['pro'],desc:'xAI Grok via OpenRouter',thinking:false},
+      {id:'microsoft/mai-ds-r1:free',name:'MAI-DS-R1 (Free)',tiers:['free','think'],desc:'Microsoft reasoning model — free!',thinking:true},
+    ]
+  },
+  perplexity:{
+    name:'Perplexity AI',short:'Perplexity',color:'#22d3a5',
+    endpoint:'https://api.perplexity.ai/chat/completions',format:'openai',
+    getKeyUrl:'https://www.perplexity.ai/settings/api',
+    pricingUrl:'https://www.perplexity.ai/hub/faq/how-does-perplexity-api-pricing-work',
+    howToBuy:'<strong>Step 1:</strong> Go to <a href="https://www.perplexity.ai/settings/api" target="_blank">perplexity.ai/settings/api</a><br><strong>Step 2:</strong> Sign up / log in<br><strong>Step 3:</strong> Generate API Key<br><strong>Note:</strong> Perplexity models have internet access! They can search the web in real-time. Requires $5 minimum credit purchase.',
+    models:[
+      {id:'llama-3.1-sonar-small-128k-online',name:'Sonar Small (Online)',tiers:['fast'],desc:'Fast web-searching model — real-time internet',thinking:false},
+      {id:'llama-3.1-sonar-large-128k-online',name:'Sonar Large (Online)',tiers:['pro'],desc:'Powerful web-searching — accurate real-time answers',thinking:false},
+      {id:'llama-3.1-sonar-huge-128k-online',name:'Sonar Huge (Online)',tiers:['pro'],desc:'Most powerful Perplexity model with web access',thinking:false},
+    ]
+  },
 };
 
-/* =========================================
-   AUTH
-========================================= */
-function setAuthMode(mode) {
-    state.authMode = mode;
-
-    document.getElementById('tab-master').classList.toggle('active', mode === 'master');
-    document.getElementById('tab-player').classList.toggle('active', mode === 'player');
-
-    document.getElementById('auth-label').innerText =
-        mode === 'master' ? 'MASTER SECURITY KEY' : 'PLAYER SESSION TOKEN';
-}
-
-function handleAuth() {
-    const input = document.getElementById('auth-input').value;
-
-    if (state.authMode === 'master') {
-        if (input === state.masterPass) {
-            localStorage.setItem('nx_session', 'master');
-            showScreen('owner-screen');
-            showToast("MASTER ACCESS");
-        } else {
-            showToast("WRONG PASSWORD", true);
-        }
-    } else {
-        if (state.tokens.includes(input)) {
-            localStorage.setItem('nx_session', 'player');
-            showScreen('chat-screen');
-            syncModelUI();
-            showToast("PLAYER LOGIN");
-        } else {
-            showToast("INVALID TOKEN", true);
-        }
-    }
-}
-
-function logout() {
-    localStorage.removeItem('nx_session');
-    location.reload();
-}
-
-/* =========================================
-   SCREEN
-========================================= */
-function showScreen(id) {
-    const screens = document.querySelectorAll('.screen');
-    screens.forEach(s => s.classList.remove('active'));
-
-    const target = document.getElementById(id);
-    if (target) target.classList.add('active');
-}
-
-/* =========================================
-   PANELS
-========================================= */
-function switchPanel(panelId, btn) {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-
-    document.querySelectorAll('.workspace-panel').forEach(p => p.classList.remove('active'));
-
-    const panel = document.getElementById('panel-' + panelId);
-    if (panel) {
-        panel.classList.add('active');
-        panel.style.display = (panelId === 'omnichat') ? 'flex' : 'block';
-    }
-
-    if (panelId === 'omnichat') syncModelUI();
-}
-
-/* =========================================
-   MODELS
-========================================= */
-function renderModels() {
-    const container = document.getElementById('model-container');
-    if (!container) return;
-
-    let html = "";
-    MODELS.forEach(m => {
-        html += `
-        <div class="model-card ${state.selectedModel.id === m.id ? 'selected' : ''}"
-             onclick="selectModel('${m.id}')">
-            <p>${m.provider}</p>
-            <h4>${m.name}</h4>
-            <div style="font-size:10px;color:var(--text-dim)">${m.desc}</div>
-        </div>`;
-    });
-
-    container.innerHTML = html;
-}
-
-function selectModel(id) {
-    const found = MODELS.find(m => m.id === id);
-    if (!found) return;
-
-    state.selectedModel = found;
-    renderModels();
-    syncModelUI();
-    showToast("MODEL: " + found.name);
-}
-
-/* =========================================
-   TOKENS
-========================================= */
-function genToken() {
-    const token = "NX-" + Math.random().toString(36).substr(2, 8).toUpperCase();
-    state.tokens.push(token);
-    localStorage.setItem('nx_tokens', JSON.stringify(state.tokens));
-    renderTokens();
-}
-
-function renderTokens() {
-    const list = document.getElementById('token-list');
-    if (!list) return;
-
-    let html = "";
-    state.tokens.forEach(t => {
-        html += `
-        <div class="glass-panel" style="padding:10px;display:flex;justify-content:space-between;">
-            <code>${t}</code>
-            <button onclick="copyToken('${t}')">COPY</button>
-        </div>`;
-    });
-
-    list.innerHTML = html;
-}
-
-function copyToken(t) {
-    navigator.clipboard.writeText(t);
-    showToast("COPIED");
-}
-
-/* =========================================
-   MODEL SYNC
-========================================= */
-function syncModelUI() {
-    const nameEl = document.getElementById('active-model-name');
-    if (nameEl) nameEl.innerText = state.selectedModel.name;
-
-    document.querySelectorAll('.think-btn-global').forEach(btn => {
-        btn.style.display = state.selectedModel.think ? 'flex' : 'none';
-        btn.classList.toggle('active', state.isThinkActive);
-    });
-
-    if (!state.selectedModel.think) state.isThinkActive = false;
-}
-
-function toggleThink() {
-    if (!state.selectedModel.think) return;
-
-    state.isThinkActive = !state.isThinkActive;
-
-    document.querySelectorAll('.think-btn-global')
-        .forEach(btn => btn.classList.toggle('active', state.isThinkActive));
-}
-
-/* =========================================
-   CHAT
-========================================= */
-function appendMsg(containerId, role, text) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const row = document.createElement('div');
-    row.className = "msg-row " + role;
-
-    const bubble = document.createElement('div');
-    bubble.className = "bubble";
-    bubble.innerText = text;
-
-    row.appendChild(bubble);
-    container.appendChild(row);
-    container.scrollTop = container.scrollHeight;
-}
-
-function addThinking(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return null;
-
-    const id = "th-" + Date.now();
-
-    const row = document.createElement('div');
-    row.className = "msg-row ai";
-    row.id = id;
-
-    row.innerHTML = `<div class="bubble thinking-bubble">Processing...</div>`;
-    container.appendChild(row);
-
-    return id;
-}
-
-function removeThinking(id) {
-    const el = document.getElementById(id);
-    if (el) el.remove();
-}
-
-function sendPlayerChat() {
-    const input = document.getElementById('player-chat-input');
-    if (!input) return;
-
-    const msg = input.value.trim();
-    if (!msg) return;
-
-    appendMsg('player-chat-display', 'user', msg);
-    input.value = "";
-
-    if (state.isThinkActive && state.selectedModel.think) {
-        const id = addThinking('player-chat-display');
-
-        setTimeout(() => {
-            removeThinking(id);
-            appendMsg('player-chat-display', 'ai',
-                "[" + state.selectedModel.name + "] analyzed: " + msg);
-        }, 2000);
-    } else {
-        setTimeout(() => {
-            appendMsg('player-chat-display', 'ai',
-                "[" + state.selectedModel.name + "] " + msg);
-        }, 500);
-    }
-}
-
-function sendOwnerChat() {
-    const input = document.getElementById('owner-chat-input');
-    if (!input) return;
-
-    const msg = input.value.trim();
-    if (!msg) return;
-
-    appendMsg('owner-chat-display', 'user', msg);
-    input.value = "";
-
-    setTimeout(() => {
-        appendMsg('owner-chat-display', 'ai',
-            "Master → " + state.selectedModel.name + ": " + msg);
-    }, 500);
-}
-
-/* =========================================
-   SETTINGS
-========================================= */
-function saveGlobalKey() {
-    const el = document.getElementById('global-api-key');
-    if (!el) return;
-
-    state.masterKey = el.value;
-    localStorage.setItem('nx_master_key', state.masterKey);
-    showToast("KEY SAVED");
-}
-
-function saveDirectives() {
-    const el = document.getElementById('sys-prompt-area');
-    if (!el) return;
-
-    state.directives = el.value;
-    localStorage.setItem('nx_directives', state.directives);
-    showToast("SAVED");
-}
-
-/* =========================================
-   TOAST
-========================================= */
-function showToast(msg, err=false) {
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.innerText = msg;
-
-    if (err) t.style.borderColor = 'var(--status-danger)';
-
-    document.body.appendChild(t);
-
-    requestAnimationFrame(() => t.classList.add('show'));
-
-    setTimeout(() => {
-        t.classList.remove('show');
-        setTimeout(() => t.remove(), 400);
-    }, 2500);
-}
-
-/* =========================================
-   INIT
-========================================= */
-window.onload = function() {
-    renderModels();
-    renderTokens();
-
-    const keyInput = document.getElementById('global-api-key');
-    if (keyInput) keyInput.value = state.masterKey;
-
-    const session = localStorage.getItem('nx_session');
-
-    if (session === 'master') {
-        showScreen('owner-screen');
-    } else if (session === 'player') {
-        showScreen('chat-screen');
-        syncModelUI();
-    }
+// ══ TIER BADGE HTML ══
+const TIER_MAP = {
+  free:'<span class="tier tier-free">FREE</span>',
+  pro:'<span class="tier tier-pro">PRO</span>',
+  fast:'<span class="tier tier-fast">FAST</span>',
+  think:'<span class="tier tier-think">THINK</span>',
+  unlimited:'<span class="tier tier-unlimited">∞</span>',
 };
+function tierBadges(tiers){return tiers.map(t=>TIER_MAP[t]||'').join('')}
 
-/* ENTER TO SEND */
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        const active = document.activeElement;
+// ══ STATE ══
+let S = {
+  ownerPassword:'admin123',
+  apiKeys:{},
+  keys:[],
+  sysPrompt:'You are NexusAI, a helpful, smart, and friendly AI assistant. You can help with coding, writing, analysis, math, creative tasks, and general questions. Be clear, concise, and engaging.',
+  temperature:0.8,
+  selectedProvider:'zhipu',
+  selectedModel:'glm-4-flash',
+};
+let chatHist=[], ownerHist=[], currentTab='owner', dropOpen=false;
 
-        if (active && active.tagName === 'TEXTAREA') {
-            e.preventDefault();
+function loadS(){const d=localStorage.getItem('nxs');if(d){try{S={...S,...JSON.parse(d)};}catch(e){}}}
+function saveS(){localStorage.setItem('nxs',JSON.stringify(S))}
+loadS();
 
-            if (active.id.includes('player')) sendPlayerChat();
-            if (active.id.includes('owner')) sendOwnerChat();
-        }
+// ══ SESSION PERSISTENCE ══
+window.addEventListener('load',()=>{
+  const sess=sessionStorage.getItem('nxsess');
+  if(sess){
+    const s=JSON.parse(sess);
+    if(s.type==='owner'){showOwner();}
+    else if(s.type==='player'){
+      const k=S.keys.find(k=>k.code===s.key);
+      if(k&&k.status!=='expired'&&(!k.expiry||Date.now()<k.expiry)){showPlayer();}
     }
+  }
 });
+
+// ══ LOGIN ══
+function setTab(t){
+  currentTab=t;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('on',(i===0&&t==='owner')||(i===1&&t==='player')));
+  document.getElementById('fld-owner').style.display=t==='owner'?'block':'none';
+  document.getElementById('fld-player').style.display=t==='player'?'block':'none';
+  document.getElementById('err').style.display='none';
+}
+function showErr(m){const e=document.getElementById('err');e.textContent=m;e.style.display='block';}
+function doLogin(){currentTab==='owner'?ownerLogin():playerLogin();}
+
+function ownerLogin(){
+  const pw=document.getElementById('inp-pass').value;
+  if(pw===S.ownerPassword){
+    sessionStorage.setItem('nxsess',JSON.stringify({type:'owner'}));
+    showOwner();
+  } else showErr('Incorrect password.');
+}
+function playerLogin(){
+  const key=document.getElementById('inp-key').value.trim().toUpperCase();
+  const k=S.keys.find(k=>k.code===key);
+  if(!k){showErr('Invalid session key.');return;}
+  if(k.expiry&&Date.now()>k.expiry){k.status='expired';saveS();showErr('This key has expired.');return;}
+  if(k.status==='expired'){showErr('This key has expired.');return;}
+  if(k.maxUses&&k.useCount>=k.maxUses){showErr('This key has reached its usage limit.');return;}
+  k.useCount=(k.useCount||0)+1;k.status='used';saveS();
+  sessionStorage.setItem('nxsess',JSON.stringify({type:'player',key}));
+  showPlayer();
+}
+
+function showOwner(){
+  showScreen('owner-screen');
+  refreshKeys();updateStats();
+  buildProvGrid();buildDrop();updateSelLabel();
+  document.getElementById('sys-prompt').value=S.sysPrompt;
+  document.getElementById('inp-temp').value=S.temperature;
+  updateOcThinkRow();
+}
+function showPlayer(){
+  showScreen('chat-screen');
+  buildDrop();updateSelLabel();updateThinkRow();
+}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+function logout(){
+  sessionStorage.removeItem('nxsess');
+  chatHist=[];ownerHist=[];
+  document.getElementById('inp-pass').value='';
+  document.getElementById('inp-key').value='';
+  document.getElementById('err').style.display='none';
+  resetMsgs();
+  showScreen('login-screen');
+}
+
+// ══ OWNER NAV ══
+function goSec(name,el){
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
+  if(el)el.classList.add('on');
+  document.querySelectorAll('.sec').forEach(s=>{s.classList.remove('on');s.style.display='none';});
+  const sec=document.getElementById('sec-'+name);
+  if(sec){
+    if(name==='mychat'){sec.style.display='flex';sec.classList.add('on');}
+    else{sec.style.display='block';sec.classList.add('on');}
+  }
+  if(name==='keys')refreshKeys();
+  if(name==='dashboard')updateStats();
+  if(name==='providers')buildProvGrid();
+  if(name==='mychat')updateOcThinkRow();
+}
+
+// ══ KEY MANAGEMENT ══
+function genKey(prefix){
+  const label=(document.getElementById(prefix+'-label').value)||'Unnamed';
+  const expDays=parseInt(document.getElementById(prefix+'-exp').value)||0;
+  const maxUses=document.getElementById(prefix+'-uses')?parseInt(document.getElementById(prefix+'-uses').value)||0:0;
+  const code='NX-'+Math.random().toString(36).substring(2,8).toUpperCase();
+  S.keys.push({code,label,created:new Date().toLocaleString(),expiry:expDays?Date.now()+(expDays*864e5):0,maxUses,useCount:0,status:'active'});
+  saveS();updateStats();refreshKeys();
+  document.getElementById(prefix+'-out').style.display='block';
+  document.getElementById(prefix+'-code').textContent=code;
+  document.getElementById(prefix+'-label').value='';
+  toast('Key generated: '+code);
+}
+function copyCode(id){navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>toast('Copied!'));}
+function refreshKeys(){
+  const list=document.getElementById('key-list');if(!list)return;
+  if(!S.keys.length){list.innerHTML='<div style="color:var(--dx);font-size:13px;text-align:center;padding:18px">No keys yet.</div>';return;}
+  const now=Date.now();
+  list.innerHTML=S.keys.map((k,i)=>{
+    let st=k.status;
+    if(k.expiry&&now>k.expiry)st='expired';
+    return `<div class="ki ${st}">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px">
+          <span class="ki-code">${k.code}</span>
+          <span class="ki-status ${st}">${st}</span>
+        </div>
+        <div class="ki-lbl">${k.label} · ${k.created}${k.maxUses?' · '+k.useCount+'/'+k.maxUses+' uses':' · '+k.useCount+' uses'}${k.expiry?' · exp '+new Date(k.expiry).toLocaleDateString():''}</div>
+      </div>
+      <button class="btn btn-ghost" onclick="navigator.clipboard.writeText('${k.code}').then(()=>toast('Copied!'))" style="padding:5px 10px;font-size:11px">Copy</button>
+      <button class="btn btn-red" onclick="delKey(${i})" style="padding:5px 10px;font-size:11px">×</button>
+    </div>`;
+  }).join('');
+}
+function delKey(i){S.keys.splice(i,1);saveS();refreshKeys();updateStats();}
+function clearKeys(){if(!confirm('Delete all keys?'))return;S.keys=[];saveS();refreshKeys();updateStats();toast('All keys deleted');}
+function updateStats(){
+  const now=Date.now();
+  document.getElementById('st-total').textContent=S.keys.length;
+  document.getElementById('st-active').textContent=S.keys.filter(k=>k.status==='active'&&(!k.expiry||k.expiry>now)).length;
+  document.getElementById('st-used').textContent=S.keys.filter(k=>k.useCount>0).length;
+  document.getElementById('st-exp').textContent=S.keys.filter(k=>k.expiry&&k.expiry<now).length;
+}
+
+// ══ PROVIDERS PANEL ══
+function buildProvGrid(){
+  const grid=document.getElementById('prov-grid');if(!grid)return;
+  grid.innerHTML=Object.entries(PROVIDERS).map(([id,p])=>`
+    <div class="prov-card${S.selectedProvider===id?' sel':''}" onclick="selectProv('${id}')">
+      <div class="prov-dot" style="background:${p.color}"></div>
+      <div class="pname">${p.short}</div>
+      <div class="pdesc">${p.models.length} models${p.models.some(m=>m.tiers.includes('free'))?' · has free tier':''}</div>
+    </div>
+  `).join('');
+  renderProvDetail(S.selectedProvider);
+}
+function selectProv(id){
+  S.selectedProvider=id;
+  const firstModel=PROVIDERS[id].models[0].id;
+  S.selectedModel=firstModel;
+  saveS();
+  buildProvGrid();
+  updateSelLabel();updateThinkRow();updateOcThinkRow();
+}
+function renderProvDetail(pid){
+  const detail=document.getElementById('prov-detail');if(!detail)return;
+  const p=PROVIDERS[pid];
+  const hasKey=S.apiKeys[pid]?'✓ API key saved':'No API key saved';
+  detail.innerHTML=`
+    <div class="prov-cfg">
+      <h4 style="color:${p.color}">${p.name} Configuration</h4>
+      <label class="lbl">API Key</label>
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <input class="inp" type="password" id="api-inp-${pid}" placeholder="Paste your ${p.short} API key..." value="${S.apiKeys[pid]||''}" style="flex:1;font-family:monospace;font-size:12px">
+        <button class="btn btn-ac" onclick="saveApiKey('${pid}')">Save</button>
+      </div>
+      <div class="info-box" style="margin-bottom:12px">
+        <strong>How to get your API key:</strong><br>${p.howToBuy}<br><br>
+        <a href="${p.getKeyUrl}" target="_blank">→ Get API Key</a> &nbsp;|&nbsp; <a href="${p.pricingUrl}" target="_blank">→ View Pricing</a>
+      </div>
+    </div>
+    <div class="prov-cfg">
+      <h4>Available Models</h4>
+      <div class="model-list">${p.models.map(m=>`
+        <div class="mi">
+          <div class="mi-top">
+            <span class="mi-name">${m.name}</span>
+            ${m.thinking?'<span style="font-size:10px;color:var(--gd)">⚡ Thinking</span>':''}
+          </div>
+          <div class="mi-tiers">${tierBadges(m.tiers)}</div>
+          <div class="mi-desc">${m.desc}</div>
+        </div>
+      `).join('')}</div>
+    </div>
+  `;
+}
+function saveApiKey(pid){
+  const val=document.getElementById('api-inp-'+pid).value.trim();
+  S.apiKeys[pid]=val;saveS();
+  toast(PROVIDERS[pid].short+' API key saved!');
+  buildDrop();
+}
+
+// ══ MODEL DROPDOWN (chat header) ══
+function buildDrop(){
+  const body=document.getElementById('mdrop-body');if(!body)return;
+  body.innerHTML=Object.entries(PROVIDERS).map(([pid,p])=>`
+    <div class="prov-section">
+      <div class="prov-hdr"><div class="phd" style="background:${p.color}"></div>${p.name}${S.apiKeys[pid]?' <span style="color:var(--gr);font-size:10px;margin-left:4px">✓ key</span>':' <span style="color:var(--dx);font-size:10px;margin-left:4px">no key</span>'}</div>
+      ${p.models.map(m=>`
+        <div class="model-opt${S.selectedProvider===pid&&S.selectedModel===m.id?' sel':''}" onclick="pickModel('${pid}','${m.id}')">
+          <div class="mo-top"><span class="mo-name">${m.name}</span>${m.thinking?'<span style="font-size:10px;color:var(--gd)">⚡</span>':''}</div>
+          <div class="mo-tiers">${tierBadges(m.tiers)}</div>
+          <div class="mo-desc">${m.desc}</div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+function pickModel(pid,mid){
+  S.selectedProvider=pid;S.selectedModel=mid;saveS();
+  updateSelLabel();updateThinkRow();updateOcThinkRow();
+  buildDrop();closeDrop();
+  toast(PROVIDERS[pid].short+' — '+getModel(pid,mid).name);
+}
+function getModel(pid,mid){return PROVIDERS[pid]?.models.find(m=>m.id===mid)||{};}
+function updateSelLabel(){
+  const p=PROVIDERS[S.selectedProvider];
+  const m=getModel(S.selectedProvider,S.selectedModel);
+  const el=document.getElementById('sel-label');
+  if(el)el.textContent=(p?.short||'?')+' · '+(m?.name||'?');
+}
+function updateThinkRow(){
+  const m=getModel(S.selectedProvider,S.selectedModel);
+  const row=document.getElementById('think-row');
+  if(row)row.classList.toggle('vis',!!m?.thinking);
+}
+function updateOcThinkRow(){
+  const m=getModel(S.selectedProvider,S.selectedModel);
+  const row=document.getElementById('oc-think-row');
+  if(row)row.classList.toggle('vis',!!m?.thinking);
+}
+function toggleDrop(){dropOpen=!dropOpen;document.getElementById('mdrop').classList.toggle('open',dropOpen);}
+function closeDrop(){dropOpen=false;document.getElementById('mdrop').classList.remove('open');}
+document.addEventListener('click',e=>{
+  if(dropOpen&&!e.target.closest('.mdrop')&&!e.target.closest('.model-sel-btn'))closeDrop();
+});
+
+// ══ SETTINGS ══
+function changePass(){
+  const np=document.getElementById('inp-newpass').value;
+  if(!np){toast('Enter a new password first');return;}
+  S.ownerPassword=np;saveS();
+  document.getElementById('inp-newpass').value='';
+  toast('Password updated!');
+}
+function saveSettings(){
+  S.sysPrompt=document.getElementById('sys-prompt').value;
+  S.temperature=parseFloat(document.getElementById('inp-temp').value)||0.8;
+  saveS();toast('Settings saved!');
+}
+function resetAll(){if(!confirm('Reset everything? Cannot be undone!'))return;localStorage.removeItem('nxs');sessionStorage.removeItem('nxsess');location.reload();}
+
+// ══ API CALLS ══
+async function callAI(hist,useThinking){
+  const pid=S.selectedProvider,mid=S.selectedModel;
+  const p=PROVIDERS[pid];
+  const apiKey=S.apiKeys[pid];
+  if(!apiKey)throw new Error('No API key for '+p.short+'. Go to AI Providers panel.');
+  const sys=S.sysPrompt;
+  const temp=S.temperature;
+  switch(p.format){
+    case 'anthropic': return callAnthropic(mid,hist,sys,useThinking,apiKey);
+    case 'google': return callGoogle(mid,hist,sys,useThinking,apiKey);
+    case 'deepseek': return callDeepSeek(p.endpoint,mid,hist,sys,useThinking,apiKey,temp);
+    case 'openrouter': return callOpenAICompat(p.endpoint,mid,hist,sys,false,apiKey,temp,true);
+    default: return callOpenAICompat(p.endpoint,mid,hist,sys,false,apiKey,temp,false);
+  }
+}
+
+async function callOpenAICompat(url,model,hist,sys,_thinking,apiKey,temp,isOR){
+  const headers={'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
+  if(isOR){headers['HTTP-Referer']='https://nexusai.app';headers['X-Title']='NexusAI';}
+  const resp=await fetch(url,{method:'POST',headers,
+    body:JSON.stringify({model,temperature:temp,messages:[{role:'system',content:sys},...hist]})
+  });
+  if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'API error '+resp.status);}
+  const data=await resp.json();
+  return{text:data.choices[0].message.content||'',thinking:''};
+}
+
+async function callDeepSeek(url,model,hist,sys,useThinking,apiKey,temp){
+  const resp=await fetch(url,{method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+    body:JSON.stringify({model,temperature:model==='deepseek-reasoner'?undefined:temp,messages:[{role:'system',content:sys},...hist]})
+  });
+  if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'API error '+resp.status);}
+  const data=await resp.json();
+  const msg=data.choices[0].message;
+  return{text:msg.content||'',thinking:msg.reasoning_content||''};
+}
+
+async function callAnthropic(model,hist,sys,useThinking,apiKey){
+  const body={model,max_tokens:useThinking?16000:8096,system:sys,messages:hist.map(m=>({role:m.role,content:m.content}))};
+  if(useThinking)body.thinking={type:'enabled',budget_tokens:10000};
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify(body)
+  });
+  if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'Anthropic error '+resp.status);}
+  const data=await resp.json();
+  let thinking='',text='';
+  for(const b of data.content){if(b.type==='thinking')thinking+=b.thinking;else if(b.type==='text')text+=b.text;}
+  return{text,thinking};
+}
+
+async function callGoogle(model,hist,sys,useThinking,apiKey){
+  const contents=hist.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
+  const body={contents,systemInstruction:{parts:[{text:sys}]},generationConfig:{}};
+  if(useThinking)body.generationConfig.thinkingConfig={thinkingBudget:8192};
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'Google error '+resp.status);}
+  const data=await resp.json();
+  let thinking='',text='';
+  const parts=data.candidates?.[0]?.content?.parts||[];
+  for(const part of parts){if(part.thought)thinking+=part.text;else text+=part.text;}
+  return{text,thinking};
+}
+
+// ══ CHAT (player) ══
+function quickSug(btn){document.getElementById('msg-in').value=btn.textContent;sendMsg();}
+async function sendMsg(){
+  const inp=document.getElementById('msg-in');
+  const text=inp.value.trim();if(!text)return;
+  inp.value='';inp.style.height='auto';
+  const w=document.getElementById('welcome');if(w)w.remove();
+  addMsg('user',text,'msgs');
+  chatHist.push({role:'user',content:text});
+  const tid=addTyping('msgs');
+  document.getElementById('send-btn').disabled=true;
+  const useThink=document.getElementById('think-tog').checked;
+  try{
+    const r=await callAI(chatHist,useThink);
+    removeTyping(tid);
+    addMsg('ai',r.text,'msgs',r.thinking);
+    chatHist.push({role:'assistant',content:r.text});
+  }catch(e){removeTyping(tid);addMsg('ai','Error: '+e.message,'msgs');}
+  document.getElementById('send-btn').disabled=false;
+}
+
+// ══ OWNER CHAT ══
+async function sendOwner(){
+  const inp=document.getElementById('oc-msg');
+  const text=inp.value.trim();if(!text)return;
+  inp.value='';inp.style.height='auto';
+  const old=document.getElementById('oc-msgs').querySelector('div:not(.msg)');if(old)old.remove();
+  addMsg('user',text,'oc-msgs');
+  ownerHist.push({role:'user',content:text});
+  const tid=addTyping('oc-msgs');
+  const useThink=document.getElementById('oc-think-tog').checked;
+  try{
+    const r=await callAI(ownerHist,useThink);
+    removeTyping(tid);
+    addMsg('ai',r.text,'oc-msgs',r.thinking);
+    ownerHist.push({role:'assistant',content:r.text});
+  }catch(e){removeTyping(tid);addMsg('ai','Error: '+e.message,'oc-msgs');}
+}
+
+// ══ MSG RENDERING ══
+function addMsg(role,text,cid,thinking=''){
+  const c=document.getElementById(cid);
+  const d=document.createElement('div');
+  d.className='msg '+role;
+  let thinkHtml='';
+  if(thinking){
+    thinkHtml=`<div class="think-block">
+      <div class="think-hdr" onclick="toggleThink(this)">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        Deep Thinking Process
+      </div>
+      <div class="think-body">${escH(thinking)}</div>
+    </div>`;
+  }
+  d.innerHTML=`<div class="msg-av">${role==='user'?'U':'★'}</div>
+    <div class="msg-wrap">${thinkHtml}<div class="bubble">${escH(text)}</div></div>`;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+function toggleThink(hdr){hdr.classList.toggle('open');hdr.nextElementSibling.classList.toggle('show');}
+function addTyping(cid){
+  const c=document.getElementById(cid);
+  const id='ty'+Date.now();
+  const d=document.createElement('div');d.className='msg ai typing';d.id=id;
+  d.innerHTML='<div class="msg-av">★</div><div class="bubble"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  c.appendChild(d);c.scrollTop=c.scrollHeight;return id;
+}
+function removeTyping(id){const el=document.getElementById(id);if(el)el.remove();}
+function clearChat(){chatHist=[];resetMsgs();toast('Chat cleared');}
+function resetMsgs(){
+  document.getElementById('msgs').innerHTML=`<div class="welcome" id="welcome">
+    <div class="wl-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14v-4H7l5-8v4h4l-5 8z"/></svg></div>
+    <h2>Chat cleared!</h2><p>Start a new conversation below.</p>
+  </div>`;
+}
+function escH(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
+
+// ══ TOAST ══
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
 </script>
+</body>
+</html>
