@@ -1,22 +1,24 @@
 <script>
 /* =========================================
-   MODEL DATABASE
+   MODEL DATABASE (SAFE VERSION)
 ========================================= */
 const MODELS = [
-    { id: "glm-4.5-flash", name: "GLM-4.5-Flash", provider: "ZhipuAI", type: "free", think: false, desc: "Nexus Default — Majestic performance." },
-    { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "Google", type: "free", think: false, desc: "Ultra-low latency reasoning." },
-    { id: "gemini-2.0-pro-exp", name: "Gemini 2.0 Pro", provider: "Google", type: "pro", think: true, desc: "Advanced reasoning." },
-    { id: "deepseek-r1", name: "DeepSeek R1", provider: "DeepSeek", type: "pro", think: true, desc: "Chain-of-thought logic." },
-    { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", type: "pro", think: false, desc: "Industry standard." },
-    ...Array.from({length: 30}, (_, i) => ({
-        id: `omni-${i}`,
-        name: `Omni Engine ${i}`,
-        provider: i % 2 ? "Google" : "Groq",
-        type: "pro",
-        think: i % 5 === 0,
-        desc: "Extended module"
-    }))
+    { id: "glm-4.5-flash", name: "GLM-4.5-Flash", provider: "ZhipuAI", type: "free", think: false, desc: "Default engine" },
+    { id: "gemini-2.0-flash", name: "Gemini Flash", provider: "Google", type: "free", think: false, desc: "Fast responses" },
+    { id: "deepseek-r1", name: "DeepSeek R1", provider: "DeepSeek", type: "pro", think: true, desc: "Reasoning model" }
 ];
+
+/* ADD EXTRA MODELS SAFELY */
+for (let i = 0; i < 20; i++) {
+    MODELS.push({
+        id: "omni-" + i,
+        name: "Omni Engine " + i,
+        provider: (i % 2 === 0) ? "Google" : "Groq",
+        type: "pro",
+        think: (i % 4 === 0),
+        desc: "Extended module"
+    });
+}
 
 /* =========================================
    STATE
@@ -32,42 +34,38 @@ let state = {
 };
 
 /* =========================================
-   UTIL
-========================================= */
-function escapeHTML(str) {
-    return str.replace(/[&<>"']/g, s => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",
-        '"':"&quot;","'":"&#39;"
-    }[s]));
-}
-
-/* =========================================
    AUTH
 ========================================= */
-function setAuthMode(m) {
-    state.authMode = m;
-    document.getElementById('tab-master').classList.toggle('active', m === 'master');
-    document.getElementById('tab-player').classList.toggle('active', m === 'player');
+function setAuthMode(mode) {
+    state.authMode = mode;
+
+    document.getElementById('tab-master').classList.toggle('active', mode === 'master');
+    document.getElementById('tab-player').classList.toggle('active', mode === 'player');
+
     document.getElementById('auth-label').innerText =
-        m === 'master' ? 'MASTER SECURITY KEY' : 'PLAYER SESSION TOKEN';
+        mode === 'master' ? 'MASTER SECURITY KEY' : 'PLAYER SESSION TOKEN';
 }
 
 function handleAuth() {
-    const val = document.getElementById('auth-input').value;
+    const input = document.getElementById('auth-input').value;
 
-    if(state.authMode === 'master') {
-        if(val === state.masterPass) {
+    if (state.authMode === 'master') {
+        if (input === state.masterPass) {
             localStorage.setItem('nx_session', 'master');
             showScreen('owner-screen');
-            showToast("MASTER ACCESS GRANTED");
-        } else showToast("INVALID KEY", true);
+            showToast("MASTER ACCESS");
+        } else {
+            showToast("WRONG PASSWORD", true);
+        }
     } else {
-        if(state.tokens.includes(val)) {
+        if (state.tokens.includes(input)) {
             localStorage.setItem('nx_session', 'player');
             showScreen('chat-screen');
             syncModelUI();
-            showToast("SESSION STARTED");
-        } else showToast("INVALID TOKEN", true);
+            showToast("PLAYER LOGIN");
+        } else {
+            showToast("INVALID TOKEN", true);
+        }
     }
 }
 
@@ -80,8 +78,11 @@ function logout() {
    SCREEN
 ========================================= */
 function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    const screens = document.querySelectorAll('.screen');
+    screens.forEach(s => s.classList.remove('active'));
+
+    const target = document.getElementById(id);
+    if (target) target.classList.add('active');
 }
 
 /* =========================================
@@ -89,16 +90,17 @@ function showScreen(id) {
 ========================================= */
 function switchPanel(panelId, btn) {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    if (btn) btn.classList.add('active');
 
     document.querySelectorAll('.workspace-panel').forEach(p => p.classList.remove('active'));
 
-    const target = document.getElementById('panel-' + panelId);
-    target.classList.add('active');
+    const panel = document.getElementById('panel-' + panelId);
+    if (panel) {
+        panel.classList.add('active');
+        panel.style.display = (panelId === 'omnichat') ? 'flex' : 'block';
+    }
 
-    target.style.display = panelId === 'omnichat' ? 'flex' : 'block';
-
-    if(panelId === 'omnichat') syncModelUI();
+    if (panelId === 'omnichat') syncModelUI();
 }
 
 /* =========================================
@@ -106,46 +108,59 @@ function switchPanel(panelId, btn) {
 ========================================= */
 function renderModels() {
     const container = document.getElementById('model-container');
-    container.innerHTML = MODELS.map(m => `
+    if (!container) return;
+
+    let html = "";
+    MODELS.forEach(m => {
+        html += `
         <div class="model-card ${state.selectedModel.id === m.id ? 'selected' : ''}"
              onclick="selectModel('${m.id}')">
             <p>${m.provider}</p>
             <h4>${m.name}</h4>
             <div style="font-size:10px;color:var(--text-dim)">${m.desc}</div>
-        </div>
-    `).join('');
+        </div>`;
+    });
+
+    container.innerHTML = html;
 }
 
 function selectModel(id) {
-    state.selectedModel = MODELS.find(m => m.id === id);
+    const found = MODELS.find(m => m.id === id);
+    if (!found) return;
+
+    state.selectedModel = found;
     renderModels();
     syncModelUI();
-    showToast("MODEL: " + state.selectedModel.name);
+    showToast("MODEL: " + found.name);
 }
 
 /* =========================================
    TOKENS
 ========================================= */
 function genToken() {
-    const t = "NX-" + Math.random().toString(36).slice(2, 10).toUpperCase();
-    state.tokens.push(t);
+    const token = "NX-" + Math.random().toString(36).substr(2, 8).toUpperCase();
+    state.tokens.push(token);
     localStorage.setItem('nx_tokens', JSON.stringify(state.tokens));
     renderTokens();
-    showToast("TOKEN CREATED");
 }
 
 function renderTokens() {
     const list = document.getElementById('token-list');
-    list.innerHTML = state.tokens.map(t => `
+    if (!list) return;
+
+    let html = "";
+    state.tokens.forEach(t => {
+        html += `
         <div class="glass-panel" style="padding:10px;display:flex;justify-content:space-between;">
             <code>${t}</code>
-            <button class="majestic-button" style="padding:5px 10px;font-size:10px"
-                onclick="copy('${t}')">COPY</button>
-        </div>
-    `).join('');
+            <button onclick="copyToken('${t}')">COPY</button>
+        </div>`;
+    });
+
+    list.innerHTML = html;
 }
 
-function copy(t) {
+function copyToken(t) {
     navigator.clipboard.writeText(t);
     showToast("COPIED");
 }
@@ -154,103 +169,105 @@ function copy(t) {
    MODEL SYNC
 ========================================= */
 function syncModelUI() {
-    const el = document.getElementById('active-model-name');
-    if(el) el.innerText = state.selectedModel.name;
+    const nameEl = document.getElementById('active-model-name');
+    if (nameEl) nameEl.innerText = state.selectedModel.name;
 
     document.querySelectorAll('.think-btn-global').forEach(btn => {
         btn.style.display = state.selectedModel.think ? 'flex' : 'none';
         btn.classList.toggle('active', state.isThinkActive);
     });
 
-    if(!state.selectedModel.think) state.isThinkActive = false;
+    if (!state.selectedModel.think) state.isThinkActive = false;
 }
 
 function toggleThink() {
-    if(!state.selectedModel.think) return;
+    if (!state.selectedModel.think) return;
 
     state.isThinkActive = !state.isThinkActive;
 
     document.querySelectorAll('.think-btn-global')
         .forEach(btn => btn.classList.toggle('active', state.isThinkActive));
-
-    showToast(state.isThinkActive ? "THINK ON" : "THINK OFF");
 }
 
 /* =========================================
    CHAT
 ========================================= */
 function appendMsg(containerId, role, text) {
-    const c = document.getElementById(containerId);
-    const div = document.createElement('div');
-    div.className = `msg-row ${role}`;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = "msg-row " + role;
 
     const bubble = document.createElement('div');
-    bubble.className = 'bubble';
+    bubble.className = "bubble";
     bubble.innerText = text;
 
-    div.appendChild(bubble);
-    c.appendChild(div);
-    c.scrollTop = c.scrollHeight;
+    row.appendChild(bubble);
+    container.appendChild(row);
+    container.scrollTop = container.scrollHeight;
 }
 
 function addThinking(containerId) {
-    const c = document.getElementById(containerId);
-    const id = 'th-' + Date.now();
+    const container = document.getElementById(containerId);
+    if (!container) return null;
 
-    const div = document.createElement('div');
-    div.className = 'msg-row ai';
-    div.id = id;
+    const id = "th-" + Date.now();
 
-    div.innerHTML = `<div class="bubble thinking-bubble">
-    Processing...
-    </div>`;
+    const row = document.createElement('div');
+    row.className = "msg-row ai";
+    row.id = id;
 
-    c.appendChild(div);
-    c.scrollTop = c.scrollHeight;
+    row.innerHTML = `<div class="bubble thinking-bubble">Processing...</div>`;
+    container.appendChild(row);
 
     return id;
 }
 
 function removeThinking(id) {
     const el = document.getElementById(id);
-    if(el) el.remove();
+    if (el) el.remove();
 }
 
 function sendPlayerChat() {
-    const inp = document.getElementById('player-chat-input');
-    const msg = inp.value.trim();
-    if(!msg) return;
+    const input = document.getElementById('player-chat-input');
+    if (!input) return;
 
-    appendMsg('player-chat-display','user',msg);
-    inp.value = "";
+    const msg = input.value.trim();
+    if (!msg) return;
 
-    if(state.isThinkActive && state.selectedModel.think) {
+    appendMsg('player-chat-display', 'user', msg);
+    input.value = "";
+
+    if (state.isThinkActive && state.selectedModel.think) {
         const id = addThinking('player-chat-display');
 
         setTimeout(() => {
             removeThinking(id);
-            appendMsg('player-chat-display','ai',
-                `(${state.selectedModel.name})\nAnalyzed: ${msg}`);
+            appendMsg('player-chat-display', 'ai',
+                "[" + state.selectedModel.name + "] analyzed: " + msg);
         }, 2000);
     } else {
         setTimeout(() => {
-            appendMsg('player-chat-display','ai',
-                `(${state.selectedModel.name}) ${msg}`);
+            appendMsg('player-chat-display', 'ai',
+                "[" + state.selectedModel.name + "] " + msg);
         }, 500);
     }
 }
 
 function sendOwnerChat() {
-    const inp = document.getElementById('owner-chat-input');
-    const msg = inp.value.trim();
-    if(!msg) return;
+    const input = document.getElementById('owner-chat-input');
+    if (!input) return;
 
-    appendMsg('owner-chat-display','user',msg);
-    inp.value = "";
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    appendMsg('owner-chat-display', 'user', msg);
+    input.value = "";
 
     setTimeout(() => {
-        appendMsg('owner-chat-display','ai',
-            `Master → ${state.selectedModel.name}: ${msg}`);
+        appendMsg('owner-chat-display', 'ai',
+            "Master → " + state.selectedModel.name + ": " + msg);
     }, 500);
 }
 
@@ -258,15 +275,21 @@ function sendOwnerChat() {
    SETTINGS
 ========================================= */
 function saveGlobalKey() {
-    state.masterKey = document.getElementById('global-api-key').value;
+    const el = document.getElementById('global-api-key');
+    if (!el) return;
+
+    state.masterKey = el.value;
     localStorage.setItem('nx_master_key', state.masterKey);
     showToast("KEY SAVED");
 }
 
 function saveDirectives() {
-    state.directives = document.getElementById('sys-prompt-area').value;
+    const el = document.getElementById('sys-prompt-area');
+    if (!el) return;
+
+    state.directives = el.value;
     localStorage.setItem('nx_directives', state.directives);
-    showToast("DIRECTIVES SAVED");
+    showToast("SAVED");
 }
 
 /* =========================================
@@ -277,7 +300,7 @@ function showToast(msg, err=false) {
     t.className = 'toast';
     t.innerText = msg;
 
-    if(err) t.style.borderColor = 'var(--status-danger)';
+    if (err) t.style.borderColor = 'var(--status-danger)';
 
     document.body.appendChild(t);
 
@@ -292,27 +315,34 @@ function showToast(msg, err=false) {
 /* =========================================
    INIT
 ========================================= */
-window.addEventListener('load', () => {
+window.onload = function() {
     renderModels();
     renderTokens();
-    document.getElementById('global-api-key').value = state.masterKey;
+
+    const keyInput = document.getElementById('global-api-key');
+    if (keyInput) keyInput.value = state.masterKey;
 
     const session = localStorage.getItem('nx_session');
-    if(session === 'master') showScreen('owner-screen');
-    if(session === 'player') {
+
+    if (session === 'master') {
+        showScreen('owner-screen');
+    } else if (session === 'player') {
         showScreen('chat-screen');
         syncModelUI();
     }
-});
+};
 
-/* ENTER SEND */
-document.querySelectorAll('textarea').forEach(tx => {
-    tx.addEventListener('keydown', function(e) {
-        if(e.key === 'Enter' && !e.shiftKey) {
+/* ENTER TO SEND */
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        const active = document.activeElement;
+
+        if (active && active.tagName === 'TEXTAREA') {
             e.preventDefault();
-            if(this.id.includes('player')) sendPlayerChat();
-            if(this.id.includes('owner')) sendOwnerChat();
+
+            if (active.id.includes('player')) sendPlayerChat();
+            if (active.id.includes('owner')) sendOwnerChat();
         }
-    });
+    }
 });
 </script>
